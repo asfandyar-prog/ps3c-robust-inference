@@ -10,7 +10,14 @@ import numpy as np
 import torch
 
 from ps3c_robust.ensemble import AdaptiveEnsemble
-from ps3c_robust.eval import coverage, distribution_shift_drop, macro_f1, selective_risk
+from ps3c_robust.eval import (
+    accuracy,
+    coverage,
+    distribution_shift_drop,
+    expected_calibration_error,
+    macro_f1,
+    selective_risk,
+)
 from ps3c_robust.selective import ConformalPredictor
 
 
@@ -48,6 +55,9 @@ def test_metrics() -> None:
     f1 = macro_f1(y_true, y_pred)
     assert 0.0 <= f1 <= 1.0
 
+    acc = accuracy(y_true, y_pred)
+    assert acc == 4 / 6
+
     drop = distribution_shift_drop(test_f1=0.95, eval_f1=0.85)
     assert 0.0 < drop < 0.2
 
@@ -67,6 +77,34 @@ def test_metrics() -> None:
     )
     assert risk["deferral_rate"] == 0.5
     assert risk["accepted_count"] == 2.0
+
+
+def test_expected_calibration_error() -> None:
+    # Perfectly calibrated: 100% confidence, 100% correct → ECE = 0.
+    perfect = np.array([
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ])
+    labels = np.array([0, 1, 2])
+    assert expected_calibration_error(perfect, labels) == 0.0
+
+    # Severely miscalibrated: 100% confidence, 0% correct → ECE = 1.
+    overconfident_wrong = np.array([
+        [1.0, 0.0, 0.0],
+        [1.0, 0.0, 0.0],
+    ])
+    wrong_labels = np.array([1, 2])
+    assert expected_calibration_error(overconfident_wrong, wrong_labels) == 1.0
+
+    # Reject raw logits (rows that don't sum to 1).
+    logits = np.array([[2.0, 1.0, -1.0]])
+    try:
+        expected_calibration_error(logits, np.array([0]))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ECE should reject non-probability inputs")
 
 
 # --------------------------------------------------------------------- helpers

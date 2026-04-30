@@ -8,7 +8,17 @@ Three mechanisms, dispatched by model family:
 """
 
 from ps3c_robust.tta.hybrid_tta import HybridTTA
-from ps3c_robust.tta.layernorm_tta import LayerNormTTA
+from ps3c_robust.tta.layernorm_tta import (
+    LayerNormTTA,
+    mean_softmax_entropy,
+    softmax_entropy,
+)
 from ps3c_robust.tta.tent import TENT
 
-__all__ = ["TENT", "HybridTTA", "LayerNormTTA"]
+__all__ = [
+    "TENT",
+    "HybridTTA",
+    "LayerNormTTA",
+    "mean_softmax_entropy",
+    "softmax_entropy",
+]
