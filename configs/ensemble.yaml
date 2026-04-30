@@ -1,0 +1,45 @@
+# Stage 2 — Sample-Adaptive Ensemble.
+
+experiment:
+  name: adaptive_ensemble
+  seed: 42
+  device: cuda
+
+# Inputs: the 7 per-team probability arrays.
+# After Stage 1 these will be the post-TTA versions.
+inputs:
+  probs_dir: data/model_outputs/tta
+  teams: [jng, ymg, ngu, gup, wan, dpz, cha]
+  num_classes: 4
+
+# Lightweight attention head producing per-sample weights over teams.
+model:
+  hidden_dim: 64
+  num_heads: 4
+  dropout: 0.1
+  # Features fed to the attention: per-team softmax + simple statistics
+  use_team_features:
+    - probs            # (num_classes,)
+    - max_prob         # confidence
+    - entropy          # uncertainty
+    - margin           # top-1 minus top-2
+
+train:
+  epochs: 30
+  batch_size: 256
+  lr: 1.0e-3
+  weight_decay: 1.0e-4
+  val_fraction: 0.1
+  early_stop_patience: 5
+
+baseline_comparison:
+  # Reproduce the original paper's static ensemble for the table
+  gradient_boost:
+    n_estimators: 200
+    max_depth: 4
+    learning_rate: 0.05
+
+output:
+  weights_path: results/adaptive_ensemble.pt
+  per_sample_weights_path: data/model_outputs/adaptive_weights.npy
+  metrics_path: results/ensemble_metrics.json

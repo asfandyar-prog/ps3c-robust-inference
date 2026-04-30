@@ -1,0 +1,58 @@
+# Stage 1 — Architecture-Aware Test-Time Adaptation.
+
+experiment:
+  name: tta
+  seed: 42
+  device: cuda
+
+# Shared entropy-minimization optimizer settings
+optimizer:
+  lr: 1.0e-4
+  betas: [0.9, 0.999]
+  weight_decay: 0.0
+  steps: 1                 # number of adaptation steps per batch (TENT default = 1)
+
+# Per-family adaptation surface
+vit:
+  # LayerNorm TTA — only γ (scale) and β (shift) of LayerNorm receive gradients
+  adapt_targets: [layernorm_weight, layernorm_bias]
+  reset_between_batches: true   # episodic adaptation; flip to false for streaming
+
+cnn:
+  # TENT — adapt BatchNorm affine + recompute running stats
+  adapt_targets: [batchnorm_weight, batchnorm_bias]
+  recompute_running_stats: true
+  reset_between_batches: true
+
+hybrid:
+  # Apply both surfaces to the same model.
+  enable_layernorm: true
+  enable_batchnorm: true
+  reset_between_batches: true
+
+# Which teams to adapt and how
+teams:
+  jng: vit
+  ymg: vit
+  ngu: vit
+  gup: cnn
+  wan: cnn
+  dpz: hybrid
+  cha: hybrid
+
+ablations:
+  # Stage 1 must produce these for the paper:
+  - name: vit_only
+    enable: [vit]
+  - name: cnn_only
+    enable: [cnn]
+  - name: hybrid_layernorm_only
+    enable: [hybrid_ln]
+  - name: hybrid_batchnorm_only
+    enable: [hybrid_bn]
+  - name: full
+    enable: [vit, cnn, hybrid_ln, hybrid_bn]
+
+output:
+  probs_dir: data/model_outputs/tta
+  metrics_path: results/tta_metrics.json

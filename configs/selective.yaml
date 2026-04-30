@@ -1,0 +1,35 @@
+# Stage 3 — Selective Prediction via Conformal Calibration.
+
+experiment:
+  name: selective_prediction
+  seed: 42
+
+# Calibration uses a held-out portion of the test set; deferral targets eval.
+data:
+  ensemble_probs_path: data/model_outputs/adaptive_ensemble_probs.npy
+  labels_path: data/model_outputs/labels.npy
+  splits:
+    calibration: test       # fit nonconformity scores here
+    deployment:  eval       # evaluate coverage / deferral rate here
+  calibration_fraction: 0.5  # half of test → calibration, half held out
+
+conformal:
+  # Adaptive Prediction Sets (APS) is a strong default for multiclass.
+  method: aps               # one of: lac, aps, raps
+  alpha: 0.05               # 1 - alpha = 95% target coverage
+  randomize: true
+
+deferral:
+  # Defer when the prediction set has more than one label,
+  # OR when bothcells is in the set above this threshold.
+  defer_on_set_size_gt: 1
+  bothcells_in_set_threshold: 0.10
+
+bothcells_analysis:
+  # Sanity check: bothcells should cluster in deferred region.
+  expected_min_deferral_rate: 0.7    # at least 70% of bothcells should be deferred
+
+output:
+  predictions_path: results/selective_predictions.csv
+  metrics_path: results/selective_metrics.json
+  coverage_plot_path: results/coverage_vs_alpha.png

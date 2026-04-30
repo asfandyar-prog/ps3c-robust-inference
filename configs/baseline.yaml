@@ -1,0 +1,48 @@
+# Stage 0 — reproduce the seven team baselines.
+
+experiment:
+  name: baseline_reproduction
+  seed: 42
+  device: cuda    # falls back to cpu automatically
+
+data:
+  apacc_root: data/raw/apacc
+  splits: [test, eval]
+  batch_size: 64
+  num_workers: 4
+  image_size: 224          # adjust per-team if a model demands a different size
+
+teams:
+  jng:
+    family: vit
+    weights_dir: weights/jng
+    components: [uni, h_optimus, gigapath]
+    use_lora: true
+  ymg:
+    family: vit
+    weights_dir: weights/ymg
+    arch: maxvit_base
+  ngu:
+    family: vit
+    weights_dir: weights/ngu
+    arch: eva02_large
+  gup:
+    family: cnn
+    weights_dir: weights/gup
+    components: [resnet50, resnet101, resnet152]
+  wan:
+    family: cnn
+    weights_dir: weights/wan
+    arch: resnet50
+  dpz:
+    family: hybrid
+    weights_dir: weights/dpz
+    components: [swinv2, convnext, se_resnext]
+  cha:
+    family: hybrid
+    weights_dir: weights/cha
+    arch: cnn_swin
+
+output:
+  probs_dir: data/model_outputs   # writes <team>_<split>_probs.npy
+  metrics_path: results/baseline_metrics.json
