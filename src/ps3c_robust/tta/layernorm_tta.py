@@ -3,7 +3,19 @@
 Ported from the Asfand Yar BSc thesis:
 
     Predictive Self-Supervised Vision Transformers under Test-Time
-    
+    Software Testing
+ What is software testing?
+ Terms used to describe a malfunction: error/mistake, defect/fault/bug, failure
+ Testing principles
+ Test case and test data
+ Test levels: unit testing, component integration testing, system testing, system
+integration testing, acceptance testing (alpha and beta testing)
+ Characteristics of good unit tests: FIRST
+ Structuring unit tests: the AAA pattern
+ JUnit: test classes and methods, test execution lifecycle, assertions, test results
+ Code coverage metrics: statement coverage/line coverage, branch coverage, what is
+a reasonable coverage number?
+
 The thesis implementation is the canonical version; this module is a
 faithful port into the PS3C project structure.
 
