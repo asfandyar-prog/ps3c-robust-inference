@@ -2,8 +2,6 @@
 
 Ported from the Asfand Yar BSc thesis:
 
-    Predictive Self-Supervised Vision Transformers under Test-Time
-    
 
 The thesis implementation is the canonical version; this module is a
 faithful port into the PS3C project structure.
