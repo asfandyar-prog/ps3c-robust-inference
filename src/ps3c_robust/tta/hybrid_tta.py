@@ -5,7 +5,7 @@ Used for DPZ (SwinV2 + ConvNeXt + SE-ResNeXt) and CHA (CNN + Swin Transformer).
 The interesting research question this enables — and the key ablation for the
 paper — is which surface contributes more to the eval-set recovery in hybrid
 architectures. The config exposes flags to ablate each independently.
-"""w
+"""
 
 from __future__ import annotations
 
