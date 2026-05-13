@@ -117,3 +117,4 @@ class HybridTTA:
             for name, param in self.model.named_parameters():
                 if name in self._initial_state:
                     param.copy_(self._initial_state[name])
+
