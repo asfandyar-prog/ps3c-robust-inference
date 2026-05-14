@@ -12,8 +12,6 @@ covered the eval distribution, and no team adapted at inference time.
 A single number anchors the contribution:
 
 
-
-
 > Recovery of the test→eval F1 drop without any retraining or eval labels.
 
 ## Why three stages, not one
