@@ -14,7 +14,6 @@ A single number anchors the contribution:
 
 > Recovery of the test→eval F1 drop without any retraining or eval labels.
 
-
 ## Why three stages, not one
 
 
