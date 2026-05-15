@@ -15,9 +15,6 @@ A single number anchors the contribution:
 > Recovery of the test→eval F1 drop without any retraining or eval labels.
 
 ## Why three stages, not one
-
-
-
 A single TTA pass on an ensemble cannot be optimal because the seven teams
 have radically different inductive biases. ViT models lack BatchNorm
 entirely, so TENT does not apply; CNN models lack LayerNorm in the
