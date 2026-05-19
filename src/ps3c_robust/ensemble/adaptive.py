@@ -8,7 +8,6 @@ Side output:  (B, T)     — per-sample attention weights for interpretability
 from __future__ import annotations
 
 import torch
-
 from torch import Tensor, nn
 
 class AdaptiveEnsemble(nn.Module):
