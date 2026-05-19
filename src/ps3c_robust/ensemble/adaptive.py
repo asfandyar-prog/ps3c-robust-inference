@@ -5,6 +5,7 @@ Output shape: (B, C)     — fused class probabilities
 Side output:  (B, T)     — per-sample attention weights for interpretability
 """
 
+
 from __future__ import annotations
 
 
