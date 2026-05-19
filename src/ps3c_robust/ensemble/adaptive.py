@@ -12,7 +12,6 @@ import torch
 
 from torch import Tensor, nn
 
-
 class AdaptiveEnsemble(nn.Module):
     """Lightweight attention head that produces per-sample weights over teams.
 
