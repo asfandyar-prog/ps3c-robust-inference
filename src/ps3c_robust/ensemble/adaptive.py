@@ -69,6 +69,7 @@ class AdaptiveEnsemble(nn.Module):
     @staticmethod
     def _team_stats(team_probs: Tensor) -> Tensor:
         """Return (max_prob, entropy, top1-top2_margin) per team."""
+        
         max_prob = team_probs.max(dim=-1).values
         log_p = torch.log(team_probs.clamp_min(1e-12))
         entropy = -(team_probs * log_p).sum(dim=-1)
