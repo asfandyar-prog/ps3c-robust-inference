@@ -6,10 +6,10 @@
 
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-4%2F4%20passing-brightgreen.svg)](#status)
+[![Tests](https://img.shields.io/badge/tests-passing-brightgreen.svg)](#status)
 [![uv](https://img.shields.io/badge/managed%20with-uv-orange)](https://docs.astral.sh/uv/)
 
-*A research project extending the [PS3C: Pap Smear Cell Classification Challenge](https://arxiv.org/abs/) (Kupas, Harangi et al.).*
+*A research project extending the PS3C: Pap Smear Cell Classification Challenge (Kupas, Harangi et al.).*
 
 </div>
 
@@ -17,179 +17,144 @@
 
 ## Status
 
-This is an active research project. The methodology and implementation are in place; experimental validation is pending model weights from the original challenge organizers.
+This is an active research project under the supervision of Prof. Balazs Harangi (University of Debrecen). The framework is implemented and the data ingest works on real team outputs. Baseline reproduction is in progress, pending the official ground-truth labels.
 
 | Component | Status | Notes |
 |---|---|---|
-| Repository scaffold | ✅ Complete | `uv` + Python 3.11, MIT license |
-| Stage 1 — Architecture-Aware TTA | ✅ Implemented | Ported from [BSc thesis](#bsc-thesis-connection) |
-| Stage 2 — Sample-Adaptive Ensemble | ✅ Implemented | Lightweight attention head |
-| Stage 3 — Conformal Selective Prediction | ✅ Implemented | Split-conformal with deferral |
-| Metrics — F1, ECE, Coverage, Selective Risk | ✅ Implemented | Includes the calibration metric the original challenge omitted |
-| Test suite | ✅ 4/4 passing | `pytest -v` |
-| **Model weights from challenge organizers** | 🟡 **Pending** | Required for baseline reproduction |
-| Baseline reproduction | ⬜ Blocked on weights | Target: match published F1 numbers |
-| TTA experimental results | ⬜ Blocked on weights | Stage 1 validation |
-| Sample-adaptive ensemble training | ⬜ Blocked on weights | Stage 2 validation |
-| Conformal calibration on real data | ⬜ Blocked on weights | Stage 3 validation |
-| Workshop paper draft | ⬜ Planned | Target: ISBI 2026 / MICCAI 2026 satellite workshop |
+| Repository scaffold | Complete | uv + Python 3.11 |
+| Stage 1 framework (TTA) | Implemented | Ported from BSc thesis |
+| Stage 2 framework (ensemble) | Implemented | Sample-adaptive attention head |
+| Stage 3 framework (conformal) | Implemented | Split-conformal with deferral |
+| Metrics (F1, ECE, coverage, selective risk) | Implemented | ECE is the calibration metric the original challenge did not report |
+| Six-team probability ingest | Working | Aligns all six teams by image name across both splits |
+| Baseline reproduction | In progress | Runs end to end; numbers not yet final (see note below) |
+| Official ground-truth labels | Pending | Needed to finalize the baseline |
+| Stage 1, 2, 3 experiments on real data | Planned | After labels are confirmed |
+| Workshop paper | Planned | Target: a 2027 venue (MIDL / ISBI) |
 
-> **What "blocked on weights" means.** The seven team checkpoints and per-image probability outputs from the original challenge are needed to reproduce the baseline and run end-to-end experiments. Until those arrive from Prof. Harangi, the pipeline runs on a synthetic harness only — see [Roadmap](#roadmap) for what we're doing in the meantime.
+> **Why the baseline is not final yet.** The six teams' probability files each contain their own `label` column, but these disagree in a few hundred cases (175 on test, 496 on evaluation), so they are not an authoritative reference. Until the official APACC label file is available, reproduced F1 numbers will not exactly match the published paper. The ingest and the pipeline are complete; only the answer key is missing.
+
+> **Data availability.** Six of the seven challenge teams' outputs are in hand (YMG, JNG, CHA, GUP, DPZ, WAN). The seventh (NGU) was not among the shared files and its code ships without trained weights, so the current work proceeds with six teams.
 
 ---
 
 ## The problem this work addresses
 
-The PS3C challenge benchmarked seven deep-learning teams on cervical cell classification using the [APACC dataset](https://osf.io/fp2xe/) (103,675 images across 107 patients). The reported results in the proceedings paper revealed two deployment-relevant failure modes that the original work documented but did not address.
+The PS3C challenge benchmarked seven deep-learning teams on cervical cell classification using the [APACC dataset](https://osf.io/fp2xe/) (103,675 images across 107 patients). The proceedings paper revealed two deployment-relevant issues that the original work documented but did not address.
 
-### Failure mode 1 — Preprocessing-induced distribution shift
+### Issue 1 — Preprocessing-induced distribution shift
 
-The hidden evaluation set used a slightly different preprocessing pipeline than the test set: cell crops were normalized to 224×224 with white-pixel padding. Every team's macro-F1 dropped on the evaluation set, with the size of the drop depending heavily on whether each team happened to match the eval-side preprocessing during training.
+The hidden evaluation set used a slightly different preprocessing pipeline than the test set: cell crops were normalized to 224x224 with white-pixel padding. Every team's macro-F1 dropped on the evaluation set, and the size of the drop depended on whether each team's training already matched the eval-side preprocessing.
 
-| Team / system | Architecture family | Test F1 | Eval F1 | Δ (absolute) |
+The figures reported in the original paper (all seven teams):
+
+| Team / system | Architecture family | Test F1 | Eval F1 | Drop |
 |---|---|---|---|---|
-| DPZ | Hybrid (CNN+ViT) | 0.8622 | 0.7092 | **−0.153** |
-| GUP | CNN ensemble | 0.8604 | 0.7211 | **−0.139** |
-| YMG | MaxViT (padded already) | 0.8680 | 0.7858 | −0.082 |
-| JNG | Foundation models + LoRA | 0.8702 | 0.8176 | −0.053 |
-| **Best ensemble** (Gradient Boost stacking) | Meta-learner | **0.9517** | **0.9245** | **−0.027** |
+| DPZ | Hybrid (CNN+ViT) | 0.8622 | 0.7092 | 0.153 |
+| GUP | CNN ensemble | 0.8604 | 0.7211 | 0.139 |
+| YMG | MaxViT (padded already) | 0.8680 | 0.7858 | 0.082 |
+| JNG | Foundation models + LoRA | 0.8702 | 0.8176 | 0.053 |
+| Best ensemble (Gradient Boost stacking) | Meta-learner | 0.9517 | 0.9245 | 0.027 |
 
-The strongest individual models and the meta-learner ensemble lose only a few points. But every system loses points, and **no team's reported method actively addresses the shift.** Closing this residual gap *without retraining* and *without target-domain labels* is the goal of Stage 1.
+The strongest individual models and the meta-learner ensemble lose only a few points, but every system loses something, and no team's reported method actively addresses the shift. Closing this residual gap without retraining and without target-domain labels is the goal of Stage 1.
 
-### Failure mode 2 — Calibration is unreported
+### Issue 2 — Calibration is unreported
 
-The PS3C paper reports accuracy and macro-F1 but does not report calibration. This matters clinically: a 92% F1 ensemble that is overconfident on its 8% of errors is harder to deploy safely than a 92% F1 ensemble whose probabilities reflect its actual reliability.
+The PS3C paper reports accuracy and macro-F1 but not calibration. This matters clinically: a 92% F1 ensemble that is overconfident on its errors is harder to deploy safely than one whose probabilities reflect its actual reliability.
 
-The connection to my BSc thesis is direct: that work measured a 64× rise in Expected Calibration Error (0.014 → 0.889) for supervised ViTs under medical domain shift, and showed that LayerNorm-only entropy minimization recovers calibration without target-domain labels. The hypothesis being tested in this project is that the same mechanism, generalized to a heterogeneous seven-model ensemble, recovers calibration on the PS3C eval set — and that Stage 3 then turns the resulting calibrated probabilities into formal coverage guarantees.
+The connection to the developer's BSc thesis is direct: that work measured a large rise in Expected Calibration Error for supervised ViTs under medical domain shift (0.014 to 0.889 on PathMNIST to DermaMNIST), and showed that LayerNorm-only entropy minimization recovers calibration without target-domain labels. The hypothesis here is that the same mechanism, applied across a heterogeneous ensemble, recovers calibration on the PS3C evaluation set, with Stage 3 turning the calibrated probabilities into formal coverage guarantees.
 
 ---
 
 ## The three-stage framework
 
 ```
-┌─────────────────────┐
-│   APACC test image  │
-└──────────┬──────────┘
-           │
-           ▼
-┌────────────────────────────────────────────────────────────────────┐
-│  STAGE 1 — Architecture-Aware Test-Time Adaptation                 │
-│                                                                    │
-│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐           │
-│   │ ViT models   │   │ CNN models   │   │ Hybrid       │           │
-│   │ JNG/YMG/NGU  │   │ GUP/WAN      │   │ DPZ/CHA      │           │
-│   │              │   │              │   │              │           │
-│   │ LayerNorm    │   │ TENT         │   │ Both         │           │
-│   │ γ/β entropy  │   │ BatchNorm    │   │ surfaces     │           │
-│   │ minimization │   │ statistics   │   │ jointly      │           │
-│   └──────┬───────┘   └──────┬───────┘   └──────┬───────┘           │
-│          └──────────────────┼──────────────────┘                   │
-└─────────────────────────────┼──────────────────────────────────────┘
-                              │ 7 adapted probability vectors
-                              ▼
-┌────────────────────────────────────────────────────────────────────┐
-│  STAGE 2 — Sample-Adaptive Ensemble                                │
-│                                                                    │
-│  Lightweight attention head produces per-sample weights over       │
-│  the 7 team outputs (replacing static gradient-boost weights).     │
-│  Different cell types should trust different models.               │
-└─────────────────────────────┬──────────────────────────────────────┘
-                              │ fused probabilities
-                              ▼
-┌────────────────────────────────────────────────────────────────────┐
-│  STAGE 3 — Conformal Selective Prediction                          │
-│                                                                    │
-│  Split-conformal calibration → 95% marginal coverage guarantee.    │
-│  Bothcells samples (no team modeled cleanly) cluster in deferred   │
-│  region and route to a cytologist.                                 │
-└─────────────────────────────┬──────────────────────────────────────┘
-                              │
-                              ▼
-                  ┌─────────────────────┐
-                  │ Predict OR Defer    │
-                  └─────────────────────┘
+            APACC cell image
+                   |
+                   v
+   STAGE 1  Architecture-Aware Test-Time Adaptation
+   --------------------------------------------------
+     ViT models        CNN models        Hybrid models
+     (JNG, YMG)        (GUP, WAN)         (DPZ, CHA)
+     LayerNorm TTA     TENT (BatchNorm)   both surfaces
+                   |
+                   v   adapted probability vectors
+   STAGE 2  Sample-Adaptive Ensemble
+   --------------------------------------------------
+     attention head -> per-sample weights over teams
+     (replaces the static gradient-boost weights)
+                   |
+                   v   fused probabilities
+   STAGE 3  Conformal Selective Prediction
+   --------------------------------------------------
+     split-conformal -> 95% coverage guarantee
+     ambiguous cases (incl. bothcells) -> defer
+                   |
+                   v
+            Predict OR Defer
 ```
 
 ### Stage 1 — Architecture-Aware Test-Time Adaptation
 
-Different model families need different adaptation surfaces. The original TENT (Wang et al., ICLR 2021) targets BatchNorm and therefore does not apply to Vision Transformers. Conversely, LayerNorm-based TTA does not apply to pure CNNs. PS3C contains both, plus hybrids — so adaptation must be dispatched per architecture.
+Different model families need different adaptation surfaces. TENT (Wang et al., ICLR 2021) targets BatchNorm and does not apply to Vision Transformers. LayerNorm-based TTA does not apply to pure CNNs. PS3C contains both, plus hybrids, so adaptation is dispatched per architecture.
 
-| Family | Mechanism | Targets | Applies to |
-|---|---|---|---|
-| ViT | Entropy minimization on LayerNorm γ, β | ~18K params on ViT-B/16 | JNG, YMG, NGU |
-| CNN | TENT — BatchNorm γ, β + recomputed running stats | per architecture | GUP, WAN |
-| Hybrid | Both surfaces simultaneously | combined | DPZ, CHA |
+| Family | Mechanism | Applies to |
+|---|---|---|
+| ViT | Entropy minimization on LayerNorm scale and shift | JNG, YMG |
+| CNN | TENT (BatchNorm affine + recomputed statistics) | GUP, WAN |
+| Hybrid | Both surfaces together | DPZ, CHA |
 
-The LayerNorm TTA implementation is ported directly from my BSc thesis ([details below](#bsc-thesis-connection)). What is novel to this work is **the dispatch pattern itself** — applying the right adaptation surface to each model in a heterogeneous ensemble, and ablating which surface matters more in hybrid architectures.
+The LayerNorm TTA implementation is ported from the developer's BSc thesis. What is new here is the dispatch pattern: applying the correct adaptation surface to each model in a heterogeneous ensemble, and ablating which surface matters more in the hybrid models.
 
 ### Stage 2 — Sample-Adaptive Ensemble
 
-A lightweight attention head produces per-sample weights over the seven team outputs, replacing the original paper's static gradient-boost weights.
+A lightweight attention head produces per-sample weights over the team outputs, replacing the original paper's static gradient-boost weights. Per team it sees the softmax probabilities plus simple confidence statistics (max probability, entropy, top-1 minus top-2 margin), and outputs a fused 3-class probability vector together with per-sample weights showing which team was trusted for each prediction.
 
-**Inputs per sample, per team:**
-- Softmax probabilities (4 dims)
-- Confidence statistics: max-prob, entropy, top-1/top-2 margin (3 dims)
-
-**Output:** fused 4-class probability vector + per-sample interpretability weights showing which team was trusted for each prediction.
-
-The hypothesis: different cell types have different optimal models, and a static ensemble cannot exploit this. Whether this holds is one of the experimental questions the project will answer.
+The hypothesis: different cell types have different best models, and a static ensemble cannot exploit that. Whether it holds is one of the questions the experiments will answer.
 
 ### Stage 3 — Conformal Selective Prediction
 
-Split-conformal prediction (APS / LAC scoring) with a target marginal coverage of 95%. The same entropy threshold that gates Stage 1 adaptation also drives the Stage 3 deferral decision, giving the pipeline a single, interpretable confidence axis.
-
-**Deferral logic:**
-- Defer if conformal prediction set has more than one label.
-- Defer if `bothcells` is in the set above a configurable probability threshold.
-
-The bothcells category is interesting precisely because no team modeled it cleanly. The expectation — testable once weights arrive — is that bothcells samples cluster in the deferred region, demonstrating that Stage 3 can flag the failure mode the original challenge surfaced but ignored.
+Split-conformal prediction (APS / LAC scoring) with a target marginal coverage of 95%. The same entropy threshold that gates Stage 1 adaptation also drives the Stage 3 deferral decision, giving the pipeline a single interpretable confidence axis. The system defers when the conformal prediction set has more than one label, or when the ambiguous "bothcells" class is in the set above a configurable threshold. The expectation, testable once the labels are confirmed, is that bothcells samples concentrate in the deferred region.
 
 ---
 
-## What is and is not novel here
+## What is and is not novel
 
-I want to be explicit about this because it shapes how the work should be read and reviewed.
+Stated plainly, because it shapes how the work should be reviewed.
 
-**Components reused from prior work:**
-- Entropy-minimization TTA loss (Wang et al., TENT, ICLR 2021)
-- LayerNorm parameter targeting (TTT++, Liu et al., NeurIPS 2021)
+**Reused from prior work:**
+- Entropy-minimization TTA loss (TENT, Wang et al., 2021)
+- LayerNorm parameter targeting (TTT++, Liu et al., 2021)
 - APS / LAC conformal scoring (Romano et al., 2020; Sadinle et al., 2019)
 
-**What this project contributes:**
-- A dispatch pattern that applies the right TTA surface per architecture across a heterogeneous ensemble — including ablation of LayerNorm vs BatchNorm contribution within hybrid models.
+**Contributed here:**
+- A dispatch pattern that applies the right TTA surface per architecture across a heterogeneous ensemble, with an ablation of LayerNorm vs BatchNorm in the hybrid models.
 - ECE as a first-class metric on the PS3C benchmark, which the original challenge does not report.
-- A unified entropy threshold that gates both adaptation (Stage 1) and deferral (Stage 3), giving the pipeline one interpretable confidence dial.
-- A bothcells-aware deferral rule with an empirical analysis of whether bothcells samples actually cluster in the deferred region.
+- A single entropy threshold that gates both adaptation and deferral.
+- A bothcells-aware deferral rule, with an empirical check of whether bothcells samples concentrate in the deferred region.
 
-These are methodology contributions and can be defended on the framework alone. The empirical claims that *will* require experimental support — does Stage 1 close the F1 gap, does it recover ECE, does the adaptive ensemble beat gradient-boost — depend on weights from the challenge organizers and have not yet been tested.
+These are methodology contributions defensible on the framework alone. The empirical claims (does the ensemble beat the gradient-boost baseline, does TTA recover ECE) require the official labels and the planned experiments.
 
 ---
 
 ## Quick start
 
 ```bash
-# Clone
 git clone https://github.com/asfandyar-prog/ps3c-robust-inference.git
 cd ps3c-robust-inference
 
-# Environment (Python 3.11)
 uv venv --python 3.11
 source .venv/bin/activate          # macOS/Linux
 # .venv\Scripts\Activate.ps1        # Windows PowerShell
 
-# Install (editable + dev tools)
 uv pip install -e ".[dev]"
-
-# Run the test suite to verify the install
 pytest -v
-# Expected: 4 passed
 ```
 
-For NVIDIA GPU + CUDA 12.4, install PyTorch first with the explicit index, then the project:
+To reproduce the six-team baseline (requires the team probability files arranged as the organizer share):
 
 ```bash
-uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
-uv pip install -e ".[dev]"
+python scripts/reproduce_baseline.py --data-dir /path/to/ps3c-team-data
 ```
 
 ---
@@ -198,90 +163,61 @@ uv pip install -e ".[dev]"
 
 ```
 ps3c-robust-inference/
-│
-├── configs/                 # YAML configs, one per pipeline stage
-├── scripts/                 # Entry points: reproduce_baseline, run_tta, train_ensemble, calibrate_conformal
+├── configs/                 # YAML configs, one per stage
+├── scripts/                 # reproduce_baseline, run_tta, train_ensemble, calibrate_conformal
 ├── src/ps3c_robust/
-│   ├── baseline/            # Stage 0: load + reproduce 7 team models (loaders pending weights)
+│   ├── baseline/            # team model loaders (pending weights)
 │   ├── tta/                 # Stage 1: LayerNormTTA, TENT, HybridTTA
 │   ├── ensemble/            # Stage 2: AdaptiveEnsemble attention head
 │   ├── selective/           # Stage 3: ConformalPredictor with deferral
-│   ├── data/                # APACC dataset + per-team probability loaders
+│   ├── data/                # team probability loaders + alignment
 │   ├── eval/                # macro_f1, expected_calibration_error, coverage, selective_risk
 │   └── utils/               # seeding, logging
-├── tests/                   # pytest — 4/4 passing
-├── docs/                    # design notes (architecture rationale)
-├── data/, weights/, results/  # gitignored — populated as artifacts arrive
-└── notebooks/               # exploration + ablations (placeholder)
+├── tests/                   # pytest
+├── docs/                    # design notes
+├── data/, weights/, results/  # gitignored
+└── notebooks/               # exploration (placeholder)
 ```
-
-The `src/`-style layout is deliberate: it prevents a class of import bugs that affect ML projects with editable installs.
 
 ---
 
 ## BSc thesis connection
 
-This project clinically grounds the framework introduced in:
+This project builds on the framework from:
 
 > **Predictive Self-Supervised Vision Transformers under Test-Time Distribution Shifts with Lightweight TTA**
-> Asfand Yar — BSc Thesis, University of Debrecen, 2026.
-> Supervisor: Dr. Bogacsovics Gergő (UniDeb). External supervisor: Sergio Correa (BMW Q-Lab Debrecen).
-> Repo: [github.com/asfandyar-prog/JEPA-RobustViT](https://github.com/asfandyar-prog/JEPA-RobustViT)
+> Asfand Yar, BSc Thesis, University of Debrecen, 2026.
+> Supervisor: Dr. Bogacsovics Gergo. External supervisor: Sergio Correa (BMW Q-Lab Debrecen).
 
-The thesis develops and evaluates LayerNorm-only entropy minimization as a TTA mechanism on three MedMNIST benchmarks (PathMNIST, DermaMNIST, RetinaMNIST). The implementation in `src/ps3c_robust/tta/layernorm_tta.py` is a faithful port of the canonical thesis `TTAWrapper`, with all design choices preserved:
-
-- `copy.deepcopy` of the model for episodic state restoration
-- Adam optimizer (1e-4) over LayerNorm γ/β only
-- Optimizer reinstantiation on every reset
-- Optional entropy threshold gating
-
-This project takes the same mechanism and applies it to a real clinical pipeline with a *naturally occurring* preprocessing shift, in a *heterogeneous* seven-model ensemble — settings the thesis does not address.
+The thesis develops LayerNorm-only entropy minimization as a TTA mechanism on MedMNIST benchmarks. The implementation in `src/ps3c_robust/tta/layernorm_tta.py` is a faithful port of the thesis `TTAWrapper`: deepcopy for episodic restoration, Adam at 1e-4 over LayerNorm scale and shift only, optimizer reinstantiation on reset, and optional entropy-threshold gating. This project applies that mechanism to a real clinical pipeline with a naturally occurring preprocessing shift, across a heterogeneous ensemble.
 
 ---
 
 ## Roadmap
 
-**Code milestones**
-
 - [x] Repository scaffold and uv environment
-- [x] Stage 1 — `LayerNormTTA` ported from BSc thesis
-- [x] Stage 2 — Sample-adaptive ensemble head
-- [x] Stage 3 — Split-conformal predictor with deferral logic
-- [x] Metrics — macro F1, ECE, coverage, selective risk
-- [ ] Receive model weights and per-team probability outputs from challenge organizers
-- [ ] Baseline reproduction (match published F1 numbers)
+- [x] Stage 1 (LayerNormTTA) ported from BSc thesis
+- [x] Stage 2 sample-adaptive ensemble head
+- [x] Stage 3 split-conformal predictor with deferral
+- [x] Metrics: macro F1, ECE, coverage, selective risk
+- [x] Six-team probability ingest and alignment
+- [ ] Obtain official APACC ground-truth labels
+- [ ] Finalize baseline reproduction against official labels
 - [ ] Stage 1 evaluation: F1 and ECE per team, with and without TTA
-- [ ] Stage 1 ablation: LayerNorm vs BatchNorm contribution in hybrid models
+- [ ] Stage 1 ablation: LayerNorm vs BatchNorm in hybrid models
 - [ ] Stage 2 evaluation: adaptive ensemble vs gradient-boost stacking
-- [ ] Stage 3 evaluation: coverage, deferral rate, bothcells routing analysis
-
-**Paper milestones**
-
-- [ ] Workshop submission (target: ISBI 2026 satellite or MICCAI 2026 workshop)
-- [ ] Full paper (target: Medical Image Analysis or ISBI 2027 main track)
-
-**Headline experimental questions**
-
-1. Does architecture-aware TTA close the residual eval-set F1 gap left by the gradient-boost baseline, without retraining?
-2. Does it also recover ECE — the metric the original challenge does not report?
-3. Does the sample-adaptive ensemble outperform gradient-boost stacking on both F1 and ECE?
-4. Do bothcells samples cluster in the deferred region of the conformal predictor, validating that the system flags the failure mode no team modeled?
+- [ ] Stage 3 evaluation: coverage, deferral rate, bothcells routing
+- [ ] Workshop paper draft
 
 ---
 
 ## Authors
 
-**Developer:** Asfand Yar — [yarasfand886@gmail.com](mailto:yarasfand886@gmail.com) — [@asfandyar-prog](https://github.com/asfandyar-prog)
+**Developer:** Asfand Yar ([@asfandyar-prog](https://github.com/asfandyar-prog))
 **Supervisor:** Prof. Balazs Harangi, Deputy Dean, Department of Data Science and Visualization, University of Debrecen.
 
 ---
 
 ## License
 
-Released under the [MIT License](LICENSE) (provisional — to be confirmed with supervisor before public release). The APACC dataset itself is distributed under CC-BY 4.0 by the original authors.
-
----
-
-## Citation
-
-This work has not yet been submitted or published. Citation information will be added once the workshop paper is accepted.
+MIT (provisional, to be confirmed with supervisor before any formal release). The APACC dataset is distributed under CC-BY 4.0 by its original authors.
