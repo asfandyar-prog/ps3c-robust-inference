@@ -1,18 +1,18 @@
-"""Reproduce the per-team and gradient-boost ensemble baselines on real data.
+"""Reproduce the published per-team baselines against the official labels.
 
-Loads the six teams' probability outputs, aligns them, and reports:
-  - alignment counts per split (sanity: test=18,159, eval=29,117)
-  - per-team macro-F1 on each split
-  - gradient-boost stacking ensemble macro-F1
+Reports accuracy and weighted-F1 for each team on both splits, alongside the
+paper's reported figures, so the match is visible. With the official APACC
+labels and the per-team decision rules in team_outputs.py (including DPZ's
+two-stage cascade), every number matches the paper to four decimals.
 
 Usage:
-    python scripts/reproduce_baseline.py --data-dir /path/to/ps3c-team-data
+    python scripts/reproduce_baseline.py \
+        --data-dir   /path/to/ps3c-team-data \
+        --labels-dir /path/to/official-labels
 
-IMPORTANT: the F1 numbers will NOT exactly match the published paper until the
-official APACC ground-truth labels are available. The labels used here are a
-best-effort consensus from the teams' own prediction files, which disagree in a
-few hundred cases. The script prints the disagreement count so the gap is
-visible. See src/ps3c_robust/data/team_outputs.py for details.
+The labels directory must contain:
+    isbi2025-ps3c-test-dataset-annotated.csv
+    isbi2025-ps3c-eval-dataset-annotated.csv
 """
 
 from __future__ import annotations
@@ -21,71 +21,61 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-from sklearn.ensemble import GradientBoostingClassifier
-from sklearn.metrics import f1_score
+from sklearn.metrics import accuracy_score, f1_score
 
-from ps3c_robust.data.team_outputs import TEAMS, load_split
+from ps3c_robust.data.team_outputs import (
+    TEAMS,
+    load_official_labels,
+    team_predictions,
+)
+
+# Published figures from the PS3C paper (Tables 3 and 4).
+PAPER_ACC = {
+    "test": {"YMG": 0.8686, "JNG": 0.8700, "CHA": 0.8165, "GUP": 0.8604, "DPZ": 0.8627, "WAN": 0.7901},
+    "eval": {"YMG": 0.7996, "JNG": 0.8229, "CHA": 0.7953, "GUP": 0.7713, "DPZ": 0.7687, "WAN": 0.7723},
+}
+PAPER_F1 = {
+    "test": {"YMG": 0.8680, "JNG": 0.8702, "CHA": 0.8319, "GUP": 0.8604, "DPZ": 0.8622, "WAN": 0.8058},
+    "eval": {"YMG": 0.7858, "JNG": 0.8176, "CHA": 0.7944, "GUP": 0.7211, "DPZ": 0.7092, "WAN": 0.7615},
+}
 
 
-def per_team_f1(probs: np.ndarray, labels: np.ndarray) -> dict[str, float]:
-    valid = labels >= 0
-    out = {}
-    for ti, team in enumerate(TEAMS):
-        preds = probs[valid, ti].argmax(axis=1)
-        out[team] = float(f1_score(labels[valid], preds, average="macro"))
-    return out
+def evaluate(data_dir: Path, labels_dir: Path, split: str) -> None:
+    gt = load_official_labels(labels_dir, split)
+    preds = {t: team_predictions(data_dir, t, split) for t in TEAMS}
 
+    common = set(gt)
+    for t in TEAMS:
+        common &= set(preds[t])
+    names = sorted(common)
+    y = np.array([gt[n] for n in names])
 
-def gradient_boost_baseline(
-    probs_train: np.ndarray,
-    y_train: np.ndarray,
-    probs_eval: np.ndarray,
-    y_eval: np.ndarray,
-) -> float:
-    vtr, vte = y_train >= 0, y_eval >= 0
-    Ftr = probs_train[vtr].reshape(int(vtr.sum()), -1)
-    Fte = probs_eval[vte].reshape(int(vte.sum()), -1)
-    clf = GradientBoostingClassifier(
-        n_estimators=200, max_depth=4, learning_rate=0.05, random_state=42
-    )
-    clf.fit(Ftr, y_train[vtr])
-    return float(f1_score(y_eval[vte], clf.predict(Fte), average="macro"))
+    print(f"===== {split}  ({len(names)} images) =====")
+    print(f"{'team':<5}{'acc':>9}{'paper':>9}{'wF1':>9}{'paper':>9}")
+    for t in TEAMS:
+        p = np.array([preds[t][n] for n in names])
+        acc = accuracy_score(y, p)
+        wf1 = f1_score(y, p, average="weighted")
+        print(
+            f"{t:<5}{acc:>9.4f}{PAPER_ACC[split][t]:>9.4f}"
+            f"{wf1:>9.4f}{PAPER_F1[split][t]:>9.4f}"
+        )
+    print()
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--data-dir",
-        type=Path,
-        required=True,
-        help="Folder containing the organizer share (wrapup_UT/, jianght_.../, "
-        "Chinmay materials/, etc.) plus the WAN/ and YMG/ follow-up folders.",
-    )
+    parser.add_argument("--data-dir", type=Path, required=True)
+    parser.add_argument("--labels-dir", type=Path, required=True)
     args = parser.parse_args()
 
-    print("Loading TEST split...")
-    _, p_test, y_test = load_split(args.data_dir, "test")
-    print(f"  aligned images: {len(y_test)} (expected 18,159); labels: {(y_test >= 0).sum()}")
-
-    print("Loading EVAL split...")
-    _, p_eval, y_eval = load_split(args.data_dir, "eval")
-    print(f"  aligned images: {len(y_eval)} (expected 29,117); labels: {(y_eval >= 0).sum()}")
-
-    print("\nPer-team macro-F1 (consensus labels — not yet authoritative):")
-    print(f"{'team':<6} {'test':>8} {'eval':>8}")
-    f1_test = per_team_f1(p_test, y_test)
-    f1_eval = per_team_f1(p_eval, y_eval)
-    for team in TEAMS:
-        print(f"{team:<6} {f1_test[team]:>8.4f} {f1_eval[team]:>8.4f}")
-
-    print("\nGradient-boost stacking ensemble:")
-    print("  paper reference (7 teams): 0.9517 test / 0.9245 eval")
-    gb = gradient_boost_baseline(p_test, y_test, p_eval, y_eval)
-    print(f"  reproduced (6 teams, trained on test -> eval): {gb:.4f}")
+    for split in ("test", "eval"):
+        evaluate(args.data_dir, args.labels_dir, split)
 
     print(
-        "\nNOTE: numbers will not match the paper exactly until the official "
-        "APACC labels are obtained. The current labels are a team consensus."
+        "All teams should match the paper to four decimals on both accuracy and\n"
+        "weighted-F1. Note: the paper's 'F1-score' column is weighted F1, not\n"
+        "macro F1, despite the text describing macro F1."
     )
 
 

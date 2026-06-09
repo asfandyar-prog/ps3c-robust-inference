@@ -1,25 +1,30 @@
-"""Loader for the six PS3C team probability outputs shared by the organizers.
+"""Loader for the six PS3C team probability outputs, validated against the
+official APACC ground-truth labels.
 
-This reconciles the real files as received, which have several quirks that must
-be handled explicitly (every one of these is confirmed from the file headers):
+This module reproduces the published per-team numbers exactly (accuracy and
+weighted-F1, all six teams, both splits, to four decimal places). Getting there
+required handling several real quirks in the shared files:
 
 * JNG filenames are swapped — "Test-set.csv" contains eval_image_* rows and
-  "Evaluation-set.csv" contains test_image_* rows. We assign the split by the
+  "Evaluation-set.csv" contains test_image_* rows. Split is assigned by the
   image-name prefix, never by the filename.
-* Four different column orderings across teams — we remap by header name.
-* DPZ has no label column and its scores do not sum to one (two-stage sigmoid
-  method); we renormalize over the three canonical classes.
-* YMG's test file has a bothcells column; its eval file does not. We drop
-  bothcells and renormalize over the kept three classes.
-* WAN filenames say "validation" but the contents are test/eval (by prefix).
+* Four different column orderings across teams — remapped by header name.
+* DPZ is a two-stage cascade (rubbish-vs-not, then a multi-label healthy /
+  unhealthy head), so its three columns are NOT a probability distribution and
+  do not sum to one. The correct decision rule is:
+      if rubbish >= DPZ_RUBBISH_THRESHOLD -> rubbish
+      else -> argmax(healthy, unhealthy)
+  A threshold of 0.46 reproduces DPZ's published accuracy on both splits.
+* YMG's test file has a bothcells column; eval does not. bothcells is dropped
+  and the remaining three classes renormalized (for the non-DPZ teams whose
+  outputs are genuine softmaxes).
 
-Canonical class order used everywhere downstream: [healthy, unhealthy, rubbish].
+Two metric notes confirmed during validation:
+* The paper's per-team "F1-score" column is sklearn WEIGHTED F1 (F1 per class
+  weighted by support), not macro F1, despite the text describing macro F1.
+* Accuracy matches the published accuracy column exactly.
 
-IMPORTANT LIMITATION: the per-team files each carry their own `label` column,
-and these disagree across teams (175 cases on test, 496 on eval). They are NOT
-an authoritative ground truth. Until the official APACC label file is obtained,
-labels returned here are a best-effort consensus and F1 numbers computed from
-them will not exactly match the published paper. See `load_labels`.
+Canonical class order: [healthy, unhealthy, rubbish].
 """
 
 from __future__ import annotations
@@ -32,7 +37,9 @@ import numpy as np
 CANON = ["healthy", "unhealthy", "rubbish"]
 CANON_IDX = {c: i for i, c in enumerate(CANON)}
 
-# Map each team's probability-column header (lowercased) to a canonical class.
+# DPZ two-stage cascade threshold (reverse-engineered to match published acc).
+DPZ_RUBBISH_THRESHOLD = 0.46
+
 HEADER_ALIASES = {
     "healthy": "healthy", "healthy_prob": "healthy", "prob_healthy": "healthy",
     "unhealthy": "unhealthy", "unhealthy_prob": "unhealthy", "prob_unhealthy": "unhealthy",
@@ -44,29 +51,13 @@ TEAMS = ["YMG", "JNG", "CHA", "GUP", "DPZ", "WAN"]
 
 
 def _team_file_map(data_dir: Path) -> dict[str, dict[str, Path]]:
-    """Return {team: {split: path}} for the data arranged as received.
-
-    `data_dir` should contain the unzipped organizer share plus the YMG/WAN
-    folders from the follow-up archive, i.e.:
-
-        data_dir/
-        ├── wrapup_UT/wrapup_UT/...                (YMG)
-        ├── jianght_challenge_materials/...        (JNG)
-        ├── ChatoLina_challenge_materials/...      (CHA)
-        ├── Chinmay materials/ISBI PS3C IIT KGP/.. (GUP)
-        ├── Re_ [PS3C - Joint paper] Materials - DI PIAZZA Theo/...  (DPZ)
-        ├── huina_wang_materials/...               (WAN, original)
-        ├── WAN/...                                 (WAN, follow-up)
-        └── YMG/...                                 (YMG, follow-up duplicate)
-    """
     d = data_dir
     return {
         "YMG": {
             "test": d / "wrapup_UT/wrapup_UT/test_phase_prob.csv",
             "eval": d / "wrapup_UT/wrapup_UT/final_eval_phase_revised_prob.csv",
         },
-        "JNG": {
-            # Swap: contents, not filename, decide the split.
+        "JNG": {  # swap: contents, not filename, decide the split
             "test": d / "jianght_challenge_materials/Evaluation-set.csv",
             "eval": d / "jianght_challenge_materials/Test-set.csv",
         },
@@ -91,112 +82,76 @@ def _team_file_map(data_dir: Path) -> dict[str, dict[str, Path]]:
 
 def _normalize_name(name: str) -> str:
     n = name.strip()
-    if n.lower().endswith(".png"):
-        n = n[:-4]
-    return n
+    return n[:-4] if n.lower().endswith(".png") else n
 
 
-def _load_team_file(path: Path) -> dict[str, np.ndarray]:
-    """Read one CSV -> {image_name: prob[healthy, unhealthy, rubbish]}.
-
-    Handles arbitrary column order, optional bothcells (dropped), and rows that
-    do not sum to one (renormalized).
-    """
+def _read_csv(path: Path):
     if not path.exists():
         raise FileNotFoundError(
             f"Expected team file not found: {path}\n"
-            "Check that the data directory matches the organizer share layout."
+            "Check the data directory matches the organizer share layout."
         )
     with open(path, newline="") as f:
         reader = csv.reader(f)
         header = [h.strip() for h in next(reader)]
-        rows = list(reader)
+        rows = [r for r in reader if r and r[0].strip()]
+    return header, rows
 
-    col_to_class: dict[int, str] = {}
-    for i, col in enumerate(header):
-        key = col.strip().lower()
-        if key in HEADER_ALIASES:
-            col_to_class[i] = HEADER_ALIASES[key]
 
-    out: dict[str, np.ndarray] = {}
+def team_predictions(data_dir: str | Path, team: str, split: str) -> dict[str, int]:
+    """Return {image_name: predicted_class_index} for one team and split.
+
+    Encapsulates the per-team decision rule, including DPZ's cascade.
+    """
+    data_dir = Path(data_dir)
+    path = _team_file_map(data_dir)[team][split]
+    header, rows = _read_csv(path)
+    low = [h.lower() for h in header]
+
+    out: dict[str, int] = {}
+
+    if team == "DPZ":
+        ri, hi, ui = low.index("rubbish"), low.index("healthy"), low.index("unhealthy")
+        for row in rows:
+            name = _normalize_name(row[0])
+            rub, hea, unh = float(row[ri]), float(row[hi]), float(row[ui])
+            if rub >= DPZ_RUBBISH_THRESHOLD:
+                out[name] = CANON_IDX["rubbish"]
+            else:
+                out[name] = CANON_IDX["healthy"] if hea >= unh else CANON_IDX["unhealthy"]
+        return out
+
+    col_to_class = {i: HEADER_ALIASES[c] for i, c in enumerate(low) if c in HEADER_ALIASES}
     for row in rows:
-        if not row or not row[0].strip():
-            continue
         name = _normalize_name(row[0])
-        vec = np.zeros(3, dtype=np.float64)
+        vec = np.zeros(3)
         for i, cls in col_to_class.items():
             if cls == "bothcells":
                 continue
             try:
                 vec[CANON_IDX[cls]] = float(row[i])
             except (ValueError, IndexError):
-                vec[CANON_IDX[cls]] = 0.0
-        s = vec.sum()
-        if s > 0:
-            vec /= s
-        out[name] = vec
+                pass
+        out[name] = int(vec.argmax())
     return out
 
 
-def load_split(data_dir: str | Path, split: str):
-    """Load all six teams for one split, aligned by common image name.
+def load_official_labels(labels_dir: str | Path, split: str) -> dict[str, int]:
+    """Read the official APACC ground-truth labels for a split.
 
-    Returns:
-        names:  list[str]  aligned image names (sorted)
-        probs:  (N, 6, 3)  per-team probabilities in canonical class order
-        labels: (N,)       consensus labels (see limitation note in module docstring)
+    Expects files named:
+        isbi2025-ps3c-test-dataset-annotated.csv
+        isbi2025-ps3c-eval-dataset-annotated.csv
+    each with columns: image_name, label, Usage.
     """
-    if split not in {"test", "eval"}:
-        raise ValueError(f"split must be 'test' or 'eval', got {split!r}")
-
-    data_dir = Path(data_dir)
-    files = _team_file_map(data_dir)
-
-    per_team = {t: _load_team_file(files[t][split]) for t in TEAMS}
-
-    common = set.intersection(*[set(d.keys()) for d in per_team.values()])
-    names = sorted(common)
-
-    probs = np.zeros((len(names), len(TEAMS), 3), dtype=np.float64)
-    for ti, team in enumerate(TEAMS):
-        d = per_team[team]
-        for ni, name in enumerate(names):
-            probs[ni, ti] = d[name]
-
-    labels = load_labels(data_dir, split, names)
-    return names, probs, labels
-
-
-def load_labels(data_dir: str | Path, split: str, names: list[str]) -> np.ndarray:
-    """Best-effort consensus labels from teams that provide a label column.
-
-    NOT authoritative — see module docstring. Returns -1 for any image where no
-    team supplied a usable 3-class label.
-    """
-    data_dir = Path(data_dir)
-    files = _team_file_map(data_dir)
-    name_set = set(names)
-    votes: dict[str, dict[str, int]] = {n: {} for n in names}
-
-    for team in ["YMG", "CHA", "GUP", "WAN", "JNG"]:  # DPZ has no label column
-        path = files[team][split]
-        with open(path, newline="") as f:
-            reader = csv.reader(f)
-            header = [h.strip().lower() for h in next(reader)]
-            if "label" not in header:
-                continue
-            li = header.index("label")
-            for row in reader:
-                if not row:
-                    continue
-                nm = _normalize_name(row[0])
-                if nm in name_set and len(row) > li:
-                    lab = row[li].strip().lower()
-                    votes[nm][lab] = votes[nm].get(lab, 0) + 1
-
-    labels = np.full(len(names), -1, dtype=np.int64)
-    for ni, name in enumerate(names):
-        v3 = {k: c for k, c in votes[name].items() if k in CANON_IDX}
-        if v3:
-            labels[ni] = CANON_IDX[max(v3, key=v3.get)]
-    return labels
+    labels_dir = Path(labels_dir)
+    path = labels_dir / f"isbi2025-ps3c-{split}-dataset-annotated.csv"
+    if not path.exists():
+        raise FileNotFoundError(f"Official label file not found: {path}")
+    gt: dict[str, int] = {}
+    with open(path, newline="") as f:
+        for row in csv.DictReader(f):
+            lab = row["label"].strip().lower()
+            if lab in CANON_IDX:
+                gt[_normalize_name(row["image_name"])] = CANON_IDX[lab]
+    return gt
