@@ -31,12 +31,12 @@ from ps3c_robust.data.team_outputs import (
 
 # Published figures from the PS3C paper (Tables 3 and 4).
 PAPER_ACC = {
-    "test": {"YMG": 0.8686, "JNG": 0.8700, "CHA": 0.8165, "GUP": 0.8604, "DPZ": 0.8627, "WAN": 0.7901},
-    "eval": {"YMG": 0.7996, "JNG": 0.8229, "CHA": 0.7953, "GUP": 0.7713, "DPZ": 0.7687, "WAN": 0.7723},
+    "test": {"YMG": 0.8686, "JNG": 0.8700, "NGU": 0.8499, "CHA": 0.8165, "GUP": 0.8604, "DPZ": 0.8627, "WAN": 0.7901},
+    "eval": {"YMG": 0.7996, "JNG": 0.8229, "NGU": 0.7581, "CHA": 0.7953, "GUP": 0.7713, "DPZ": 0.7687, "WAN": 0.7723},
 }
 PAPER_F1 = {
-    "test": {"YMG": 0.8680, "JNG": 0.8702, "CHA": 0.8319, "GUP": 0.8604, "DPZ": 0.8622, "WAN": 0.8058},
-    "eval": {"YMG": 0.7858, "JNG": 0.8176, "CHA": 0.7944, "GUP": 0.7211, "DPZ": 0.7092, "WAN": 0.7615},
+    "test": {"YMG": 0.8680, "JNG": 0.8702, "NGU": 0.8523, "CHA": 0.8319, "GUP": 0.8604, "DPZ": 0.8622, "WAN": 0.8058},
+    "eval": {"YMG": 0.7858, "JNG": 0.8176, "NGU": 0.7136, "CHA": 0.7944, "GUP": 0.7211, "DPZ": 0.7092, "WAN": 0.7615},
 }
 
 

@@ -47,7 +47,7 @@ HEADER_ALIASES = {
     "bothcells": "bothcells", "bothcells_prob": "bothcells",
 }
 
-TEAMS = ["YMG", "JNG", "CHA", "GUP", "DPZ", "WAN"]
+TEAMS = ["YMG", "JNG", "NGU", "CHA", "GUP", "DPZ", "WAN"]
 
 
 def _team_file_map(data_dir: Path) -> dict[str, dict[str, Path]]:
@@ -60,6 +60,10 @@ def _team_file_map(data_dir: Path) -> dict[str, dict[str, Path]]:
         "JNG": {  # swap: contents, not filename, decide the split
             "test": d / "jianght_challenge_materials/Evaluation-set.csv",
             "eval": d / "jianght_challenge_materials/Test-set.csv",
+        },
+        "NGU": {
+            "test": d / "NGU/predictions_isbi2025-ps3c-test-dataset.csv",
+            "eval": d / "NGU/predictions_isbi2025-ps3c-eval-dataset.csv",
         },
         "CHA": {
             "test": d / "ChatoLina_challenge_materials/isbi2025-ps3c-test-dataset pro Ens.csv",
