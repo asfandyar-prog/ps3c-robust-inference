@@ -51,6 +51,7 @@ class ConformalPredictor:
         method: ScoreMethod = "aps",
         defer_on_set_size_gt: int = 1,
         bothcells_in_set_threshold: float = 0.10,
+        n_classes: int = 3,
         rng: np.random.Generator | None = None,
     ) -> None:
         if not 0 < alpha < 1:
@@ -59,12 +60,23 @@ class ConformalPredictor:
         self.method = method
         self.defer_on_set_size_gt = defer_on_set_size_gt
         self.bothcells_in_set_threshold = bothcells_in_set_threshold
+        self.n_classes = n_classes
+        # The bothcells deferral branch only applies when the data actually
+        # carries a bothcells column (4-class layout). The PS3C pipeline runs
+        # 3-class (healthy, unhealthy, rubbish) with bothcells dropped, so with
+        # the default n_classes=3 the branch is disabled and deferral is driven
+        # purely by prediction-set size.
+        self._defer_on_bothcells = n_classes > BOTHCELLS_IDX
         self.rng = rng or np.random.default_rng(0)
 
         self._qhat: float | None = None
 
     def calibrate(self, probs: np.ndarray, labels: np.ndarray) -> None:
         """Compute the conformal quantile q-hat from a calibration split."""
+        if probs.shape[1] != self.n_classes:
+            raise ValueError(
+                f"probs has {probs.shape[1]} columns but n_classes={self.n_classes}"
+            )
         scores = self._nonconformity(probs, labels)
         n = len(scores)
         # finite-sample correction
@@ -76,16 +88,21 @@ class ConformalPredictor:
         """Produce conformal sets and deferral decisions for new data."""
         if self._qhat is None:
             raise RuntimeError("Call calibrate() before predict().")
+        if probs.shape[1] != self.n_classes:
+            raise ValueError(
+                f"probs has {probs.shape[1]} columns but n_classes={self.n_classes}"
+            )
 
         sets = self._build_sets(probs, self._qhat)             # (N, C) bool
         point = probs.argmax(axis=1)                           # (N,)
         set_size = sets.sum(axis=1)                            # (N,)
 
-        bothcells_in_set = sets[:, BOTHCELLS_IDX] & (
-            probs[:, BOTHCELLS_IDX] > self.bothcells_in_set_threshold
-        )
-
-        deferred = (set_size > self.defer_on_set_size_gt) | bothcells_in_set
+        deferred = set_size > self.defer_on_set_size_gt
+        if self._defer_on_bothcells:
+            bothcells_in_set = sets[:, BOTHCELLS_IDX] & (
+                probs[:, BOTHCELLS_IDX] > self.bothcells_in_set_threshold
+            )
+            deferred = deferred | bothcells_in_set
 
         # Per-sample worst-case score is informative for coverage plots.
         scores = self._nonconformity_max(probs)

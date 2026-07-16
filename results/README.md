@@ -52,9 +52,46 @@ The generator learns a strong in-distribution head (val 0.8738) that collapses
 out-of-distribution (eval 0.7039), with unhealthy recall falling to ~8%. This is
 the central motivating result for the robustness framework.
 
+## Stage 3 — conformal selective prediction (3-class, LAC)
+
+Driver: `scripts/run_04_conformal.py`, using `ConformalPredictor`
+(`src/ps3c_robust/selective/conformal.py`) in 3-class mode (bothcells dropped).
+Method: split-conformal **LAC** (Sadinle et al., 2019). The ensemble is fed to the
+conformal predictor in two forms — `rank_average` (canonical champion) and
+`simple_average` (mean of the raw team probabilities). The test split is divided
+50/50 into calibration (9,079) / hold-out (9,080), stratified, seed 42.
+
+**Scenario 1 — within-test (exchangeable): the guarantee holds.** Both
+representations achieve empirical coverage within ±0.006 of 1−α for
+α ∈ {0.05, 0.10, 0.15, 0.20}.
+
+**Scenario 2 — cross-split (calibrate on test → predict on eval):**
+
+| α | target | rank_average cov | simple_average cov |
+|--:|-------:|-----------------:|-------------------:|
+| 0.05 | 0.95 | 0.998 (+0.048) | **0.936 (−0.013)** |
+| 0.10 | 0.90 | 0.978 (+0.077) | **0.844 (−0.056)** |
+| 0.15 | 0.85 | 0.940 (+0.090) | **0.767 (−0.083)** |
+| 0.20 | 0.80 | 0.892 (+0.092) | **0.700 (−0.101)** |
+
+`simple_average` **under-covers at every α** (the selective-prediction evidence
+for the shift); `rank_average` over-covers because it is shift-invariant.
+
+**Two methodological findings (flagged for review):**
+1. **Method.** APS as implemented in `conformal.py` randomizes the *calibration*
+   score but builds prediction sets *non-randomized* — an asymmetry that shrinks
+   q̂ and **under-covers** even within-test. LAC has no such asymmetry and meets
+   coverage, so it is the default. `--method aps` reproduces the under-coverage.
+2. **Representation.** Rank-averaging is invariant to the test→eval shift (its
+   per-class marginals are near-identical across splits: `[0.33,0.33,0.35]` vs
+   `[0.33,0.33,0.35]`), so it *cannot* exhibit under-coverage. Simple-average
+   tracks the shift (`[0.35,0.06,0.60]` → `[0.43,0.11,0.46]`) and does. This
+   corroborates why rank-averaging is the robust point-prediction champion.
+
 ## Files
 
-Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`.
+Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`,
+`conformal_results.json`.
 Ignored binaries (regenerate by re-running the scripts): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
 
