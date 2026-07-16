@@ -84,6 +84,10 @@ def load_team(path,team):
 def load_all(data_dir,labels_dir,split):
     gt=load_labels(labels_dir,split); fm=file_map(data_dir)
     pt={t:load_team(fm[t][split],t) for t in TEAMS}
+    # CANONICAL SAMPLE SET (cited across the paper): per split, the intersection
+    # of image IDs scored by ALL 7 teams, restricted to annotated ground-truth.
+    # Identical rule in run_02 so their rank-averaging references agree. See
+    # results/README.md.
     common=set(gt)
     for t in TEAMS: common&=set(pt[t])
     names=sorted(common)
