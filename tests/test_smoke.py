@@ -39,7 +39,7 @@ def test_conformal_calibrate_predict_round_trip() -> None:
     cal_labels = cal_probs.argmax(axis=1)        # cooperative oracle for smoke test
     test_probs = _toy_softmax(rng, n_test, n_classes)
 
-    cp = ConformalPredictor(alpha=0.1, method="aps")
+    cp = ConformalPredictor(alpha=0.1, method="aps", n_classes=n_classes)
     cp.calibrate(cal_probs, cal_labels)
     out = cp.predict(test_probs)
 
