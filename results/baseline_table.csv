@@ -1,0 +1,9 @@
+Method,Category,Eval_wF1,Delta_vs_RankAvg
+Rank Averaging,Non-learned,0.8157,+0.0000
+LightGBM,Learned,0.7983,-0.0174
+XGBoost,Learned,0.7899,-0.0258
+CatBoost,Learned,0.7860,-0.0297
+Hard Voting,Non-learned,0.7817,-0.0339
+Simple Average,Non-learned,0.7585,-0.0571
+Geometric Mean,Non-learned,0.7178,-0.0978
+Random Forest,Learned,0.6950,-0.1207
