@@ -39,7 +39,12 @@ dependencies = [
     "numpy>=1.26",
     "pandas>=2.1",
     "scipy>=1.11",
-    "scikit-learn>=1.4",      # gradient boost ensemble baseline
+    "scikit-learn>=1.4",      # RF + simple ensemble baselines
+
+    # Gradient-boost ensemble baselines (scripts/run_02_baselines.py)
+    "xgboost>=2.0",
+    "lightgbm>=4.0",
+    "catboost>=1.2",
 
     # Conformal prediction
     "mapie>=0.8",             # scaffolding; custom logic on top in src/ps3c_robust/selective
