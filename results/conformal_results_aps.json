@@ -1,0 +1,189 @@
+{
+  "method": "aps",
+  "n_classes": 3,
+  "class_names": [
+    "healthy",
+    "unhealthy",
+    "rubbish"
+  ],
+  "canonical_n": {
+    "test": 18159,
+    "eval": 29117
+  },
+  "within_test_split": {
+    "calibration": 9079,
+    "holdout": 9080
+  },
+  "within_test": {
+    "rank_average": {
+      "0.05": {
+        "target_coverage": 0.95,
+        "empirical_coverage": 0.9523,
+        "coverage_gap": 0.0023,
+        "deferral_rate": 0.9949,
+        "n_accepted": 46,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9818,
+        "accepted_coverage": 0.9783
+      },
+      "0.10": {
+        "target_coverage": 0.9,
+        "empirical_coverage": 0.9007,
+        "coverage_gap": 0.0007,
+        "deferral_rate": 0.9289,
+        "n_accepted": 646,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9479,
+        "accepted_coverage": 0.9427
+      },
+      "0.15": {
+        "target_coverage": 0.85,
+        "empirical_coverage": 0.8491,
+        "coverage_gap": -0.0009,
+        "deferral_rate": 0.6011,
+        "n_accepted": 3622,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.8957,
+        "accepted_coverage": 0.8749
+      },
+      "0.20": {
+        "target_coverage": 0.8,
+        "empirical_coverage": 0.8152,
+        "coverage_gap": 0.0152,
+        "deferral_rate": 0.3046,
+        "n_accepted": 6314,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.8561,
+        "accepted_coverage": 0.8252
+      }
+    },
+    "simple_average": {
+      "0.05": {
+        "target_coverage": 0.95,
+        "empirical_coverage": 0.9649,
+        "coverage_gap": 0.0149,
+        "deferral_rate": 0.4083,
+        "n_accepted": 5373,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9612,
+        "accepted_coverage": 0.9615
+      },
+      "0.10": {
+        "target_coverage": 0.9,
+        "empirical_coverage": 0.9403,
+        "coverage_gap": 0.0403,
+        "deferral_rate": 0.2528,
+        "n_accepted": 6785,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9381,
+        "accepted_coverage": 0.9381
+      },
+      "0.15": {
+        "target_coverage": 0.85,
+        "empirical_coverage": 0.9216,
+        "coverage_gap": 0.0716,
+        "deferral_rate": 0.1683,
+        "n_accepted": 7552,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9207,
+        "accepted_coverage": 0.9208
+      },
+      "0.20": {
+        "target_coverage": 0.8,
+        "empirical_coverage": 0.907,
+        "coverage_gap": 0.107,
+        "deferral_rate": 0.1144,
+        "n_accepted": 8041,
+        "n_total": 9080,
+        "accepted_weighted_f1": 0.9073,
+        "accepted_coverage": 0.9075
+      }
+    }
+  },
+  "cross_split_test_to_eval": {
+    "rank_average": {
+      "0.05": {
+        "target_coverage": 0.95,
+        "empirical_coverage": 0.9878,
+        "coverage_gap": 0.0378,
+        "deferral_rate": 0.9975,
+        "n_accepted": 74,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8912,
+        "accepted_coverage": 0.9189
+      },
+      "0.10": {
+        "target_coverage": 0.9,
+        "empirical_coverage": 0.9714,
+        "coverage_gap": 0.0714,
+        "deferral_rate": 0.9352,
+        "n_accepted": 1888,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.9207,
+        "accepted_coverage": 0.9253
+      },
+      "0.15": {
+        "target_coverage": 0.85,
+        "empirical_coverage": 0.9241,
+        "coverage_gap": 0.0741,
+        "deferral_rate": 0.5909,
+        "n_accepted": 11911,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8965,
+        "accepted_coverage": 0.8985
+      },
+      "0.20": {
+        "target_coverage": 0.8,
+        "empirical_coverage": 0.8796,
+        "coverage_gap": 0.0796,
+        "deferral_rate": 0.2784,
+        "n_accepted": 21012,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8618,
+        "accepted_coverage": 0.8631
+      }
+    },
+    "simple_average": {
+      "0.05": {
+        "target_coverage": 0.95,
+        "empirical_coverage": 0.9569,
+        "coverage_gap": 0.0069,
+        "deferral_rate": 0.5084,
+        "n_accepted": 14313,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.9438,
+        "accepted_coverage": 0.9544
+      },
+      "0.10": {
+        "target_coverage": 0.9,
+        "empirical_coverage": 0.918,
+        "coverage_gap": 0.018,
+        "deferral_rate": 0.3461,
+        "n_accepted": 19039,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8917,
+        "accepted_coverage": 0.9118
+      },
+      "0.15": {
+        "target_coverage": 0.85,
+        "empirical_coverage": 0.8855,
+        "coverage_gap": 0.0355,
+        "deferral_rate": 0.2365,
+        "n_accepted": 22230,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8507,
+        "accepted_coverage": 0.8777
+      },
+      "0.20": {
+        "target_coverage": 0.8,
+        "empirical_coverage": 0.8604,
+        "coverage_gap": 0.0604,
+        "deferral_rate": 0.163,
+        "n_accepted": 24370,
+        "n_total": 29117,
+        "accepted_weighted_f1": 0.8234,
+        "accepted_coverage": 0.8541
+      }
+    }
+  }
+}

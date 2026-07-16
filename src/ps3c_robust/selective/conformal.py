@@ -145,12 +145,17 @@ class ConformalPredictor:
         if self.method == "lac":
             return probs >= 1.0 - qhat
 
-        # APS set construction: include classes in descending-probability order
-        # while cumulative mass ≤ qhat (and always include the top class).
+        # Randomized APS set construction (Romano et al., 2020): include the
+        # sorted class k iff  cumulative_before_k + U * prob_k <= qhat, with one
+        # U ~ Uniform(0, 1) drawn per sample. This mirrors the randomized
+        # calibration score in _nonconformity; the non-randomized rule
+        # (equivalent to U = 1) shrinks the sets and under-covers.
         order = np.argsort(-probs, axis=1)
         sorted_probs = np.take_along_axis(probs, order, axis=1)
         cumulative = np.cumsum(sorted_probs, axis=1)
-        include_sorted = cumulative <= qhat
+        cumulative_before = cumulative - sorted_probs
+        u = self.rng.uniform(size=(probs.shape[0], 1))
+        include_sorted = (cumulative_before + u * sorted_probs) <= qhat
         include_sorted[:, 0] = True   # never empty
 
         sets = np.zeros_like(probs, dtype=bool)

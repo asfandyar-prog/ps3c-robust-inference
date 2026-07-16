@@ -78,10 +78,13 @@ representations achieve empirical coverage within ±0.006 of 1−α for
 for the shift); `rank_average` over-covers because it is shift-invariant.
 
 **Two methodological findings (flagged for review):**
-1. **Method.** APS as implemented in `conformal.py` randomizes the *calibration*
-   score but builds prediction sets *non-randomized* — an asymmetry that shrinks
-   q̂ and **under-covers** even within-test. LAC has no such asymmetry and meets
-   coverage, so it is the default. `--method aps` reproduces the under-coverage.
+1. **Method.** APS originally under-covered even within-test: `conformal.py`
+   randomized the *calibration* score but built prediction sets *non-randomized*.
+   Fixed `_build_sets` to use the randomized APS inclusion rule (Romano et al.,
+   2020), so **both LAC and APS now meet the within-test guarantee** (compare
+   `conformal_results_lac.json` and `conformal_results_aps.json`). LAC remains the
+   default and gives the cleaner shift demonstration; APS builds larger adaptive
+   sets that stay more conservative under the shift.
 2. **Representation.** Rank-averaging is invariant to the test→eval shift (its
    per-class marginals are near-identical across splits: `[0.33,0.33,0.35]` vs
    `[0.33,0.33,0.35]`), so it *cannot* exhibit under-coverage. Simple-average
@@ -91,7 +94,7 @@ for the shift); `rank_average` over-covers because it is shift-invariant.
 ## Files
 
 Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`,
-`conformal_results.json`.
+`conformal_results_lac.json`, `conformal_results_aps.json`.
 Ignored binaries (regenerate by re-running the scripts): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
 

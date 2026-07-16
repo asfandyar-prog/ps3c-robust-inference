@@ -22,10 +22,10 @@ Two scenarios, each evaluated on TWO ensemble representations:
   2. CROSS-SPLIT (shifted): calibrate on full test, predict on full eval.
 
 Empirical findings that shape this driver (see results/README.md):
-  * METHOD. APS in conformal.py randomizes the calibration score but builds
-    prediction sets non-randomized — an asymmetry that under-covers. LAC
-    (Sadinle et al., 2019) is internally consistent and meets its guarantee, so
-    LAC is the default here. Pass --method aps to reproduce the under-coverage.
+  * METHOD. Both LAC (Sadinle et al., 2019) and randomized APS (Romano et al.,
+    2020) meet their coverage guarantee within-test. (APS previously under-covered
+    because conformal.py randomized the calibration score but built prediction
+    sets non-randomized; that asymmetry is now fixed.) LAC is the default.
   * REPRESENTATION. rank_average is (by construction) invariant to the test->eval
     distribution shift: its per-class marginals are near-identical across splits,
     so cross-split coverage HOLDS. simple_average tracks the shift, so cross-split
@@ -263,7 +263,7 @@ def main():
         "within_test": within,
         "cross_split_test_to_eval": cross,
     }
-    out_path = out / "conformal_results.json"
+    out_path = out / f"conformal_results_{args.method}.json"
     out_path.write_text(json.dumps(results, indent=2))
 
     print("\n" + "=" * 78)
