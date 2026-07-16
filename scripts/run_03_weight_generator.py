@@ -20,7 +20,7 @@ try:
 except ImportError:
     print("ERROR: pip install torch"); sys.exit(1)
 try:
-    from sklearn.metrics import f1_score, classification_report
+    from sklearn.metrics import f1_score, classification_report, recall_score
     from sklearn.model_selection import train_test_split
 except ImportError:
     print("ERROR: pip install scikit-learn"); sys.exit(1)
@@ -261,8 +261,11 @@ def main():
     # Save
     torch.save(model.state_dict(), out/"weight_generator_cluster.pt")
     np.save(out/"cluster_routing_eval.npy", routing_np)
+    recalls=recall_score(labels_ev,preds_ev,average=None,labels=[0,1,2])
+    per_class_recall={"healthy":float(recalls[0]),"unhealthy":float(recalls[1]),"rubbish":float(recalls[2])}
     summary={"rank_averaging":ra_ev,"weight_generator_cluster":final_f1,
-             "delta_vs_rank_avg":final_f1-ra_ev,"n_clusters":args.n_clusters}
+             "delta_vs_rank_avg":final_f1-ra_ev,"best_val_wf1":float(best_val),
+             "per_class_recall":per_class_recall,"n_clusters":args.n_clusters}
     (out/"weight_generator_results.json").write_text(json.dumps(summary,indent=2))
     print(f"\nSaved model → {out}/weight_generator_cluster.pt")
     print(f"Saved results → {out}/weight_generator_results.json")

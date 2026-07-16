@@ -2,5 +2,11 @@
   "rank_averaging": 0.815650165377144,
   "weight_generator_cluster": 0.7039267226916234,
   "delta_vs_rank_avg": -0.11172344268552059,
+  "best_val_wf1": 0.8737811097762522,
+  "per_class_recall": {
+    "healthy": 0.8578688948229821,
+    "unhealthy": 0.08005796051439956,
+    "rubbish": 0.9856511220488863
+  },
   "n_clusters": 8
 }
