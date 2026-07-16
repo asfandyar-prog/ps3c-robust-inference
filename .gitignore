@@ -77,8 +77,17 @@ weights/**/*.safetensors
 weights/**/*.ckpt
 weights/**/*.npz
 
-# Experiment outputs
-results/
+# Experiment outputs — track JSON/text summaries in history, ignore heavy binaries
+results/*.pt
+results/*.pth
+results/*.npy
+results/*.npz
+results/*.ckpt
+results/**/*.pt
+results/**/*.pth
+results/**/*.npy
+results/**/*.npz
+results/**/*.ckpt
 runs/
 lightning_logs/
 wandb/
