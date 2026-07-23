@@ -1,0 +1,18 @@
+{
+  "eval_wf1": 0.7364,
+  "per_class_recall": {
+    "healthy": 0.8729,
+    "unhealthy": 0.1541,
+    "rubbish": 0.9815
+  },
+  "best_val_wf1": 0.8674,
+  "rank_averaging_canonical": 0.8157,
+  "simple_average": 0.7585,
+  "hard_voting": 0.7817,
+  "canonical_n": {
+    "test": 18159,
+    "eval": 29117
+  },
+  "loader": "canonical (run_03: 7-way intersection, DPZ hardened cascade thr=0.46)",
+  "note": "Supersedes the earlier non-canonical 0.7479 (ps3c-results/adaptive_ensemble_results.txt), which used the ps3c_robust.data.team_outputs loader (soft DPZ, rank-avg ref 0.8199). Model architecture and hyperparameters unchanged; only the data-loading path differs."
+}

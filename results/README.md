@@ -61,12 +61,34 @@ These are **two different Stage-2 models**, not one:
    in-distribution (low-unhealthy) validation split, then fails to recognize the
    eval-inflated unhealthy class.
 
-2. **AdaptiveEnsemble** (`src/ps3c_robust/ensemble/adaptive.py`; attention head
-   over teams). eval wF1 **0.7479**. ⚠️ Source
-   `ps3c-results/adaptive_ensemble_results.txt` (2026-06-18) — computed on a
-   **non-canonical** sample set (its rank-averaging reference is 0.8199, not the
-   canonical 0.8157) and **not re-run** on the canonical 18,159/29,117 set. Report
-   as indicative only; not directly comparable to the tables above.
+2. **AdaptiveEnsemble** (`scripts/train_adaptive_ensemble.py`,
+   `src/ps3c_robust/ensemble/adaptive.py`; attention head over teams). Re-run on
+   the **canonical loader** — identical to run_03 (7-way intersection, DPZ
+   hardened via the cascade rule); model architecture and hyperparameters
+   unchanged, only the data-loading path. Source `adaptive_ensemble_canonical.json`:
+   - eval wF1 **0.7364**, eval **unhealthy recall 0.1541**
+   - **loader sanity check:** rank averaging comes out at the canonical **0.8157**,
+     and simple-average (0.7585) / hard-voting (0.7817) reproduce the baseline
+     table exactly — confirming the loader matches run_03.
+   > Supersedes the earlier **0.7479** (`ps3c-results/adaptive_ensemble_results.txt`,
+   > 2026-06-18), which used a different loader (soft DPZ, rank-avg reference
+   > 0.8199, not re-run on the canonical set).
+
+**Stage-2 models on equal footing (canonical loader, eval split):**
+
+| Model | eval wF1 | unhealthy recall |
+|---|--:|--:|
+| Rank Averaging (non-learned champion) | **0.8157** | — |
+| AdaptiveEnsemble | 0.7364 | 0.1541 |
+| WeightGeneratorCluster | 0.7039 | 0.0801 |
+
+Both learned Stage-2 models collapse below parameter-free rank averaging, and
+neither recovers the unhealthy class (recall 0.15 / 0.08 against the eval prior
+0.19). (The comparison uses the canonical rank-averaging value **0.8157**; the
+**0.8218** cited under BBSE is the *normalized-DPZ* variant from `run_05`, a
+different DPZ representation. Rank averaging's per-class recall is not persisted
+for the canonical loader; on the normalized-DPZ pipeline it is 0.668,
+`bbse_results.json`.)
 
 ## d. BBSE label-shift correction
 
@@ -155,7 +177,7 @@ Sources: `bbse_results.json`, `dataset_audit.json`.
 | BBSE priors/weights + raw-vs-corrected | `run_05_bbse.py` | `bbse_results.json` |
 | Matched-correction (a/b/c) | `run_06_bbse_matched.py` | `bbse_matched_results.json` |
 | Dataset audit (soft stats, class counts) | audit script | `dataset_audit.json` |
-| AdaptiveEnsemble 0.7479 (non-canonical) | `train_adaptive_ensemble.py` | `ps3c-results/adaptive_ensemble_results.txt` |
+| AdaptiveEnsemble 0.7364 (canonical) | `train_adaptive_ensemble.py` | `adaptive_ensemble_canonical.json` |
 
 All runs use venv Python 3.11; on Windows prefix `PYTHONUTF8=1`. Example:
 ```
@@ -186,6 +208,7 @@ rank_average over-covers (shift-invariant); simple_average under-covers at every
 ## Files
 
 Tracked JSON/text: `ensemble_baselines.json`, `weight_generator_results.json`,
+`adaptive_ensemble_canonical.json`, `adaptive_ensemble_results.txt`,
 `bbse_results.json`, `bbse_matched_results.json`, `conformal_results_lac.json`,
 `conformal_results_aps.json`, `dataset_audit.json`, `baseline_table.csv`,
 `provenance/weight_generator_rerun.log`.

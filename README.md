@@ -67,8 +67,10 @@ unhealthy recall from `bbse_results.json`):
 **Weight Generator — two distinct models.** *WeightGeneratorCluster*
 (`run_03`, `weight_generator_results.json`): validation wF1 **0.8738** but eval
 wF1 **0.7039** with **8.0% unhealthy recall** — the high val score is collapse on
-the shifted class, not genuine performance. *AdaptiveEnsemble* (`adaptive.py`):
-eval wF1 **0.7479** (non-canonical sample set; not re-run on the canonical split).
+the shifted class, not genuine performance. *AdaptiveEnsemble*
+(`train_adaptive_ensemble.py`): eval wF1 **0.7364**, unhealthy recall **0.1541**
+on the canonical loader (supersedes the earlier non-canonical 0.7479). Both
+learned Stage-2 models sit below rank averaging (0.8157 canonical).
 
 **BBSE label-shift correction** (`run_05`, `bbse_results.json`). Applied post-hoc,
 no retraining. Helps simple posterior averaging (simple average **+0.040**, hard

@@ -43,24 +43,30 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import time
 from pathlib import Path
 
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, recall_score
 from sklearn.model_selection import train_test_split
 
-from ps3c_robust.data.team_outputs import (
-    CANON_IDX,
-    DPZ_RUBBISH_THRESHOLD,
-    HEADER_ALIASES,
-    TEAMS,
-    _normalize_name,
-    _team_file_map,
-    load_official_labels,
-)
+# ── Canonical loader constants — identical to run_03 / run_02 / the baseline
+# table. DPZ is hardened via the cascade rule (thr=0.46) and the sample set is
+# the 7-way intersection ∩ annotated labels (test 18,159 / eval 29,117). Only
+# this data-loading path differs from the earlier, superseded version of this
+# script; the model architecture and hyperparameters are unchanged.
+CANON_IDX = {"healthy": 0, "unhealthy": 1, "rubbish": 2}
+TEAMS = ["YMG", "JNG", "NGU", "CHA", "GUP", "DPZ", "WAN"]
+DPZ_THR = 0.46
+HEADER_ALIASES = {
+    "healthy": "healthy", "healthy_prob": "healthy", "prob_healthy": "healthy",
+    "unhealthy": "unhealthy", "unhealthy_prob": "unhealthy", "prob_unhealthy": "unhealthy",
+    "rubbish": "rubbish", "rubbish_prob": "rubbish", "prob_rubbish": "rubbish",
+    "bothcells": "bothcells", "bothcells_prob": "bothcells",
+}
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Reproducibility
@@ -75,72 +81,82 @@ np.random.seed(SEED)
 # Data loading  (returns full probability vectors, not just argmax)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _norm(n: str) -> str:
+    n = n.strip()
+    return n[:-4] if n.lower().endswith(".png") else n
+
+
+def _file_map(data_dir: Path) -> dict:
+    d = Path(data_dir)
+    return {
+        "YMG": {"test": d/"wrapup_UT/wrapup_UT/test_phase_prob.csv", "eval": d/"wrapup_UT/wrapup_UT/final_eval_phase_revised_prob.csv"},
+        "JNG": {"test": d/"jianght_challenge_materials/Evaluation-set.csv", "eval": d/"jianght_challenge_materials/Test-set.csv"},
+        "NGU": {"test": d/"NGU/predictions_isbi2025-ps3c-test-dataset.csv", "eval": d/"NGU/predictions_isbi2025-ps3c-eval-dataset.csv"},
+        "CHA": {"test": d/"ChatoLina_challenge_materials/isbi2025-ps3c-test-dataset pro Ens.csv", "eval": d/"ChatoLina_challenge_materials/isbi2025-ps3c-eval-dataset pro Ens.csv"},
+        "GUP": {"test": d/"Chinmay materials/ISBI PS3C IIT KGP/Test_Set_ProbabilityScores.csv", "eval": d/"Chinmay materials/ISBI PS3C IIT KGP/Eval_Set_ProbabilityScores.csv"},
+        "DPZ": {"test": d/"Re_ [PS3C - Joint paper] Materials - DI PIAZZA Theo/probabilities_test.csv", "eval": d/"Re_ [PS3C - Joint paper] Materials - DI PIAZZA Theo/probabilities_eval.csv"},
+        "WAN": {"test": d/"WAN/validation_predictions2.csv", "eval": d/"WAN/val_predictions_resnet50.csv"},
+    }
+
+
+def _load_labels(labels_dir: Path, split: str) -> dict:
+    path = Path(labels_dir)/f"isbi2025-ps3c-{split}-dataset-annotated.csv"
+    gt = {}
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            lab = row["label"].strip().lower()
+            if lab in CANON_IDX:
+                gt[_norm(row["image_name"])] = CANON_IDX[lab]
+    return gt
+
+
+def _load_team(path: Path, team: str) -> dict:
+    with open(path, newline="", encoding="utf-8") as f:
+        rd = csv.reader(f)
+        header = [h.strip().lower() for h in next(rd)]
+        rows = [r for r in rd if r and r[0].strip()]
+    d: dict[str, np.ndarray] = {}
+    if team == "DPZ":
+        ri, hi, ui = header.index("rubbish"), header.index("healthy"), header.index("unhealthy")
+        for row in rows:
+            nm = _norm(row[0]); rub, hea, unh = float(row[ri]), float(row[hi]), float(row[ui])
+            v = np.zeros(3, dtype=np.float32)
+            v[2 if rub >= DPZ_THR else (0 if hea >= unh else 1)] = 1.0
+            d[nm] = v
+    else:
+        c2c = {i: HEADER_ALIASES[c] for i, c in enumerate(header) if c in HEADER_ALIASES}
+        for row in rows:
+            nm = _norm(row[0]); v = np.zeros(3, dtype=np.float32)
+            for i, cls in c2c.items():
+                if cls == "bothcells":
+                    continue
+                try:
+                    v[CANON_IDX[cls]] = float(row[i])
+                except (ValueError, IndexError):
+                    pass
+            s = v.sum(); d[nm] = v / s if s > 0 else v
+    return d
+
+
 def load_probs_and_labels(
     data_dir: Path,
     labels_dir: Path,
     split: str,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return (probs, labels): (N, T, C) float32 and (N,) int64.
+    """Canonical loader — identical rule to run_03 / run_02 / the baseline table.
 
-    probs[i, t, c] is team t's probability for class c on image i.
-    For DPZ the sigmoid outputs are converted to a comparable 3-class
-    distribution using the verified cascade rule (thr=0.46).
+    Sample set = 7-way intersection of image IDs ∩ annotated labels; DPZ hardened
+    via the cascade rule (thr=0.46). Returns (probs (N,T,C) float32, labels (N,) int64).
     """
-    gt = load_official_labels(labels_dir, split)
-    files = _team_file_map(data_dir)
-    per_team: dict[str, dict[str, np.ndarray]] = {}
-
-    for team in TEAMS:
-        path = files[team][split]
-        with open(path, newline="") as f:
-            rd = csv.reader(f)
-            header = [h.strip().lower() for h in next(rd)]
-            rows = [r for r in rd if r and r[0].strip()]
-
-        d: dict[str, np.ndarray] = {}
-        if team == "DPZ":
-            ri = header.index("rubbish")
-            hi = header.index("healthy")
-            ui = header.index("unhealthy")
-            for row in rows:
-                nm = _normalize_name(row[0])
-                rub, hea, unh = float(row[ri]), float(row[hi]), float(row[ui])
-                # Keep sigmoid magnitudes but form a comparable 3-class vector.
-                if rub >= DPZ_RUBBISH_THRESHOLD:
-                    v = np.array([0.0, 0.0, rub], dtype=np.float32)
-                else:
-                    v = np.array([hea, unh, 1.0 - rub], dtype=np.float32)
-                s = v.sum()
-                d[nm] = v / s if s > 0 else v
-        else:
-            c2c = {
-                i: HEADER_ALIASES[c]
-                for i, c in enumerate(header)
-                if c in HEADER_ALIASES
-            }
-            for row in rows:
-                nm = _normalize_name(row[0])
-                v = np.zeros(3, dtype=np.float32)
-                for i, cls in c2c.items():
-                    if cls == "bothcells":
-                        continue
-                    try:
-                        v[CANON_IDX[cls]] = float(row[i])
-                    except (ValueError, IndexError):
-                        pass
-                s = v.sum()
-                d[nm] = v / s if s > 0 else v
-        per_team[team] = d
-
-    # Align by images present in ALL teams AND in the label file.
+    gt = _load_labels(labels_dir, split)
+    fm = _file_map(data_dir)
+    per_team = {t: _load_team(fm[t][split], t) for t in TEAMS}
     common = set(gt)
     for t in TEAMS:
         common &= set(per_team[t])
     names = sorted(common)
-
     probs = np.stack(
-        [np.array([per_team[t][n] for n in names], dtype=np.float32)
-         for t in TEAMS],
+        [np.array([per_team[t][n] for n in names], dtype=np.float32) for t in TEAMS],
         axis=1,
     )  # (N, T, C)
     labels = np.array([gt[n] for n in names], dtype=np.int64)
@@ -419,6 +435,9 @@ def main() -> None:
     attn_np  = attn_ev.cpu().numpy()
 
     adaptive_f1 = float(f1_score(labels_eval, preds_ev, average="weighted"))
+    _rec = recall_score(labels_eval, preds_ev, average=None, labels=[0, 1, 2])
+    per_class_recall = {n: float(_rec[k]) for k, n in enumerate(["healthy", "unhealthy", "rubbish"])}
+    best_val_f1 = max((h["val_wf1"] for h in history), default=float("nan"))
 
     # ── Results table ─────────────────────────────────────────────────────────
     print("\n" + "=" * 60)
@@ -443,13 +462,34 @@ def main() -> None:
     print(f"\nSaved model  -> {args.out_dir}/adaptive_ensemble.pt")
     print(f"Saved attn   -> {args.out_dir}/attention_weights_eval.npy")
 
-    # Summary line (also written to file for easy reporting)
+    # Per-class recall (esp. unhealthy — where the shift hits hardest)
+    print("\nAdaptiveEnsemble per-class recall (eval):")
+    for n in ["healthy", "unhealthy", "rubbish"]:
+        print(f"  {n:<10} {per_class_recall[n]:.4f}")
+
+    # Summary + machine-readable results (canonical loader = same as run_03)
     summary = (
-        f"AdaptiveEnsemble eval wF1: {adaptive_f1:.4f}  |  "
-        f"Rank Avg (best reprod. baseline): {ra_f1:.4f}  |  "
-        f"GB paper: 0.9245"
+        f"AdaptiveEnsemble (canonical loader) eval wF1: {adaptive_f1:.4f}  |  "
+        f"unhealthy recall: {per_class_recall['unhealthy']:.4f}  |  "
+        f"Rank Averaging (canonical): {ra_f1:.4f}  |  "
+        f"n_test={len(labels_test)} n_eval={len(labels_eval)}"
     )
     (args.out_dir / "adaptive_ensemble_results.txt").write_text(summary)
+    payload = {
+        "eval_wf1": round(adaptive_f1, 4),
+        "per_class_recall": {k: round(v, 4) for k, v in per_class_recall.items()},
+        "best_val_wf1": round(best_val_f1, 4),
+        "rank_averaging_canonical": round(ra_f1, 4),
+        "simple_average": round(sa_f1, 4),
+        "hard_voting": round(hv_f1, 4),
+        "canonical_n": {"test": int(len(labels_test)), "eval": int(len(labels_eval))},
+        "loader": "canonical (run_03: 7-way intersection, DPZ hardened cascade thr=0.46)",
+        "note": "Supersedes the earlier non-canonical 0.7479 "
+                "(ps3c-results/adaptive_ensemble_results.txt), which used the "
+                "ps3c_robust.data.team_outputs loader (soft DPZ, rank-avg ref 0.8199). "
+                "Model architecture and hyperparameters unchanged; only the data-loading path differs.",
+    }
+    (args.out_dir / "adaptive_ensemble_canonical.json").write_text(json.dumps(payload, indent=2))
     print(f"\n{summary}")
 
     # Per-team attention weight analysis (which teams get trusted the most)
