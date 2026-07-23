@@ -1,8 +1,9 @@
-"""Stage 2 — train the sample-adaptive ensemble.
+"""[SUPERSEDED SCAFFOLD] Early Stage-2 driver stub.
 
-Reads adapted probability arrays produced by Stage 1, fits the
-`AdaptiveEnsemble` attention head, and saves both the trained weights and
-the per-sample team-attention weights for later analysis.
+Superseded by the active Stage-2 scripts — run_02_baselines.py,
+run_03_weight_generator.py and train_adaptive_ensemble.py — which operate directly
+on the raw team probability vectors. Stage 1 (TTA) is out of scope, so Stage 2 does
+not depend on any adapted inputs. Retained for reference only.
 """
 
 from __future__ import annotations
@@ -22,7 +23,10 @@ def main() -> None:
         cfg = yaml.safe_load(f)
 
     print(yaml.safe_dump(cfg, sort_keys=False))
-    raise SystemExit("Stage 2 blocked on Stage 1 outputs.")
+    raise SystemExit(
+        "Superseded scaffold — use scripts/run_02_baselines.py, "
+        "scripts/run_03_weight_generator.py, or scripts/train_adaptive_ensemble.py."
+    )
 
 
 if __name__ == "__main__":

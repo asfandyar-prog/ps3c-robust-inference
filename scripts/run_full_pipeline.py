@@ -1,7 +1,10 @@
-"""End-to-end pipeline: baseline → TTA → ensemble → selective prediction.
+"""Legacy scaffold orchestrator (baseline → ensemble → selective prediction).
 
-Runs all four stages sequentially with their default config files. Use this
-once each stage is independently working.
+Stage 1 (TTA) is out of scope, so this no longer references it. The active
+two-stage pipeline is the numbered scripts run_01_verify → run_02_baselines →
+run_03_weight_generator → run_04_conformal → run_05_bbse → run_06_bbse_matched,
+run individually with --data-dir/--labels-dir. This orchestrator is retained for
+reference only and still points at the early scaffold stubs.
 """
 
 from __future__ import annotations
@@ -12,7 +15,6 @@ from pathlib import Path
 
 STAGES = [
     ("Baseline reproduction", "scripts/reproduce_baseline.py"),
-    ("Stage 1 — TTA",         "scripts/run_tta.py"),
     ("Stage 2 — Ensemble",    "scripts/train_ensemble.py"),
     ("Stage 3 — Selective",   "scripts/calibrate_conformal.py"),
 ]

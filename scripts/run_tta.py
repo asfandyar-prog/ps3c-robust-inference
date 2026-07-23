@@ -1,4 +1,9 @@
-"""Run Stage 1 — architecture-aware TTA — on the seven teams.
+"""[OUT OF SCOPE] Stage 1 — architecture-aware TTA driver.
+
+Architecture-aware TTA is out of scope for the current two-stage paper (see the
+repository README, "Out of scope / Future work"). This driver and the TTA code in
+`src/ps3c_robust/tta/` are retained for future work and are NOT part of the active
+run_0N pipeline; nothing in the active path imports or calls this module.
 
 Dispatches each team to the right adapter based on `TEAM_FAMILIES`, runs the
 relevant ablations from `configs/tta.yaml`, and writes adapted probability

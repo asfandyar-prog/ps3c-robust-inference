@@ -1,4 +1,11 @@
-# PS3C Results — Stage 2 ensembling & label-shift analysis
+# PS3C Results — two-stage framework (Stages 2 & 3)
+
+This is a **two-stage framework**: shift-robust ensembling (Stage 2) and conformal
+selective prediction (Stage 3). The stages keep the numbers **2** and **3** from
+the project's original three-stage design so the labels stay aligned with the
+`run_0N` scripts, these results files, and the code (e.g. `conformal.py` refers to
+"Stage 3"). Architecture-aware TTA (the former "Stage 1") is **out of scope** —
+implemented (`src/ps3c_robust/tta/`) but not evaluated (see the repository README).
 
 Every number below is drawn from a saved file in this directory and cited inline.
 **Canonical sample set** = per-split intersection of image IDs scored by all 7
