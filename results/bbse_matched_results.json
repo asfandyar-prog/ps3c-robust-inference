@@ -1,0 +1,80 @@
+{
+  "reference_rank_averaging_raw": 0.8218,
+  "weights_source": "results/bbse_results.json (exact, not re-estimated)",
+  "per_learner": {
+    "xgboost": {
+      "a_raw_raw": {
+        "wf1": 0.7836,
+        "unhealthy_recall": 0.4385
+      },
+      "b_raw_corrected": {
+        "wf1": 0.6771,
+        "unhealthy_recall": 0.0034
+      },
+      "c_corrected_corrected": {
+        "wf1": 0.7905,
+        "unhealthy_recall": 0.4852
+      },
+      "delta_c_minus_a": 0.0069,
+      "delta_c_minus_b": 0.1134,
+      "beats_rank_avg": false
+    },
+    "lightgbm": {
+      "a_raw_raw": {
+        "wf1": 0.7826,
+        "unhealthy_recall": 0.447
+      },
+      "b_raw_corrected": {
+        "wf1": 0.683,
+        "unhealthy_recall": 0.0139
+      },
+      "c_corrected_corrected": {
+        "wf1": 0.7821,
+        "unhealthy_recall": 0.4554
+      },
+      "delta_c_minus_a": -0.0005,
+      "delta_c_minus_b": 0.0991,
+      "beats_rank_avg": false
+    },
+    "catboost": {
+      "a_raw_raw": {
+        "wf1": 0.7901,
+        "unhealthy_recall": 0.6376
+      },
+      "b_raw_corrected": {
+        "wf1": 0.753,
+        "unhealthy_recall": 0.3362
+      },
+      "c_corrected_corrected": {
+        "wf1": 0.7828,
+        "unhealthy_recall": 0.6979
+      },
+      "delta_c_minus_a": -0.0073,
+      "delta_c_minus_b": 0.0298,
+      "beats_rank_avg": false
+    },
+    "random_forest": {
+      "a_raw_raw": {
+        "wf1": 0.6906,
+        "unhealthy_recall": 0.0953
+      },
+      "b_raw_corrected": {
+        "wf1": 0.6738,
+        "unhealthy_recall": 0.0
+      },
+      "c_corrected_corrected": {
+        "wf1": 0.7013,
+        "unhealthy_recall": 0.1342
+      },
+      "delta_c_minus_a": 0.0107,
+      "delta_c_minus_b": 0.0275,
+      "beats_rank_avg": false
+    }
+  },
+  "best_c": {
+    "name": "xgboost",
+    "wf1": 0.7905
+  },
+  "any_c_beats_rank_avg": false,
+  "protocol_notes": "matched BBSE correction: meta-learners retrained on corrected test probs, evaluated on corrected eval probs; hyperparameters identical to the BBSE run; 7 base models untouched; DPZ normalized."
+}

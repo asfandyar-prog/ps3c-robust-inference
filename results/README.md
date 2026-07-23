@@ -140,11 +140,30 @@ Takeaways:
   **not** produce a new best method. A pooled/ensemble-level BBSE weight (instead
   of noisy per-model weights) is the natural next experiment.
 
+**Matched-correction follow-up** (`scripts/run_06_bbse_matched.py`,
+`bbse_matched_results.json`): retraining the 4 meta-learners on BBSE-corrected
+*test* probs and evaluating on corrected eval probs (same weights, loaded not
+re-estimated; hyperparameters unchanged; base models untouched) confirms the (b)
+collapse was a train/serve **input-mismatch artifact**, not a failure of
+correction. Eval wF1 across the three matched conditions:
+
+| meta-learner | (a) raw/raw | (b) raw/corr | (c) corr/corr | unhealthy recall a→c |
+|---|--:|--:|--:|--|
+| XGBoost | 0.7836 | 0.6771 | **0.7905** | 0.439→0.485 |
+| LightGBM | 0.7826 | 0.6830 | 0.7821 | 0.447→0.455 |
+| CatBoost | 0.7901 | 0.7530 | 0.7828 | 0.638→0.698 |
+| Random Forest | 0.6906 | 0.6738 | 0.7013 | 0.095→0.134 |
+
+Matched correction (c) recovers every learner to ~its raw baseline (XGB/RF
+marginally above; LGB/CB flat) and restores unhealthy recall — but **none reaches
+rank averaging (0.8218)**. Negative result, as expected: correction doesn't break
+the learned methods, it just doesn't beat the shift-invariant champion.
+
 ## Files
 
 Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`,
 `conformal_results_lac.json`, `conformal_results_aps.json`, `bbse_results.json`,
-`baseline_table.csv`.
+`bbse_matched_results.json`, `baseline_table.csv`.
 Ignored binaries (regenerate by re-running the scripts): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
 
