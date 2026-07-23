@@ -1,0 +1,175 @@
+{
+  "canonical_n": {
+    "test": 18159,
+    "eval": 29117
+  },
+  "true_test_prior": {
+    "healthy": 0.32083264496943664,
+    "unhealthy": 0.03171980835949116,
+    "rubbish": 0.6474475466710722
+  },
+  "true_eval_prior": {
+    "healthy": 0.39870178933269224,
+    "unhealthy": 0.18961431466153794,
+    "rubbish": 0.4116838960057698
+  },
+  "bbse_per_model": {
+    "YMG": {
+      "weights": [
+        1.0794422181055365,
+        7.810420992257306,
+        0.626976877245637
+      ],
+      "estimated_eval_prior": [
+        0.34632030192647445,
+        0.24774505708134834,
+        0.4059346409921773
+      ]
+    },
+    "JNG": {
+      "weights": [
+        1.0050469306292151,
+        10.683314699005335,
+        0.5230932478971777
+      ],
+      "estimated_eval_prior": [
+        0.32245186507218504,
+        0.3388726948965843,
+        0.33867544003123073
+      ]
+    },
+    "NGU": {
+      "weights": [
+        1.6128396486166328,
+        0.5264687790506613,
+        0.7195160491984625
+      ],
+      "estimated_eval_prior": [
+        0.5174516103772508,
+        0.016699488778742264,
+        0.46584890084400676
+      ]
+    },
+    "CHA": {
+      "weights": [
+        1.1277252408050493,
+        7.107915666003156,
+        0.6374681741474841
+      ],
+      "estimated_eval_prior": [
+        0.3618110718062787,
+        0.22546172276104498,
+        0.4127272054326762
+      ]
+    },
+    "GUP": {
+      "weights": [
+        1.6940902188960072,
+        0.6650738293237769,
+        0.672463031302319
+      ],
+      "estimated_eval_prior": [
+        0.543519445745258,
+        0.021096014411063138,
+        0.4353845398436789
+      ]
+    },
+    "DPZ": {
+      "weights": [
+        1.0971915940663504,
+        0.0,
+        1.016697624098839
+      ],
+      "estimated_eval_prior": [
+        0.3484353133439215,
+        0.0,
+        0.6515646866560785
+      ]
+    },
+    "WAN": {
+      "weights": [
+        1.4486313247055282,
+        3.72873616906155,
+        0.644001179627979
+      ],
+      "estimated_eval_prior": [
+        0.46476821949085323,
+        0.11827479670573555,
+        0.4169569838034113
+      ]
+    }
+  },
+  "bbse_mean_estimated_eval_prior": {
+    "healthy": 0.41496540396603165,
+    "unhealthy": 0.13830711066207407,
+    "rubbish": 0.4467274853718943
+  },
+  "bbse_prior_l1_error_vs_true": 0.1026,
+  "ensemble_raw_vs_corrected": {
+    "rank_averaging": {
+      "raw_wf1": 0.8218,
+      "corrected_wf1": 0.8208,
+      "delta": -0.0009,
+      "raw_unhealthy_recall": 0.6684,
+      "corrected_unhealthy_recall": 0.6454,
+      "published_baseline": 0.815650165377144
+    },
+    "lightgbm": {
+      "raw_wf1": 0.7826,
+      "corrected_wf1": 0.683,
+      "delta": -0.0996,
+      "raw_unhealthy_recall": 0.447,
+      "corrected_unhealthy_recall": 0.0139,
+      "published_baseline": 0.7982715067007801
+    },
+    "xgboost": {
+      "raw_wf1": 0.7836,
+      "corrected_wf1": 0.6771,
+      "delta": -0.1064,
+      "raw_unhealthy_recall": 0.4385,
+      "corrected_unhealthy_recall": 0.0034,
+      "published_baseline": 0.7898725348536426
+    },
+    "catboost": {
+      "raw_wf1": 0.7901,
+      "corrected_wf1": 0.753,
+      "delta": -0.0371,
+      "raw_unhealthy_recall": 0.6376,
+      "corrected_unhealthy_recall": 0.3362,
+      "published_baseline": 0.7859910831732352
+    },
+    "hard_voting": {
+      "raw_wf1": 0.7859,
+      "corrected_wf1": 0.8122,
+      "delta": 0.0263,
+      "raw_unhealthy_recall": 0.2918,
+      "corrected_unhealthy_recall": 0.4921,
+      "published_baseline": 0.781702850913075
+    },
+    "simple_average": {
+      "raw_wf1": 0.7713,
+      "corrected_wf1": 0.8113,
+      "delta": 0.04,
+      "raw_unhealthy_recall": 0.2494,
+      "corrected_unhealthy_recall": 0.4211,
+      "published_baseline": 0.7585357571817019
+    },
+    "geometric_mean": {
+      "raw_wf1": 0.7296,
+      "corrected_wf1": 0.7011,
+      "delta": -0.0284,
+      "raw_unhealthy_recall": 0.1617,
+      "corrected_unhealthy_recall": 0.0652,
+      "published_baseline": 0.7178145617499322
+    },
+    "random_forest": {
+      "raw_wf1": 0.6906,
+      "corrected_wf1": 0.6738,
+      "delta": -0.0168,
+      "raw_unhealthy_recall": 0.0953,
+      "corrected_unhealthy_recall": 0.0,
+      "published_baseline": 0.6949613660481734
+    }
+  },
+  "protocol_notes": "normalized DPZ; meta-learners trained on raw test only (no eval_set); Raw* differs from published baseline (cascade DPZ + early stopping)."
+}

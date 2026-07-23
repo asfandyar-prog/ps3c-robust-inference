@@ -91,10 +91,60 @@ for the shift); `rank_average` over-covers because it is shift-invariant.
    tracks the shift (`[0.35,0.06,0.60]` → `[0.43,0.11,0.46]`) and does. This
    corroborates why rank-averaging is the robust point-prediction champion.
 
+## BBSE label-shift correction (3-class, normalized DPZ)
+
+Driver: `scripts/run_05_bbse.py`, functions in `src/ps3c_robust/adapt/bbse.py`
+(BBSE-hard: joint confusion matrix from argmax test predictions vs true test
+labels → least-squares weights → clip ≥0 → target prior; correction
+`p(y|x)·w(y)`). Post-hoc on saved probabilities only — no model is retrained.
+DPZ (no softmax) is normalized to a pseudo-distribution and used consistently in
+the raw and corrected ensembles. Results in `bbse_results.json`.
+
+**Step 2 — the label-shift hypothesis is confirmed, but per-model estimates are
+noisy.** True unhealthy prior rises 0.0317 → 0.1896 (5.98×). BBSE's *mean*
+estimated eval prior recovers the direction (unhealthy 0.0317 → 0.1383, ~4.4×;
+L1 error vs truth 0.1026), but per-model estimates scatter badly because the
+unhealthy column of every confusion matrix rests on only 576 test samples with
+low model recall:
+
+| model | est. unhealthy ratio q/p_test | (true 5.98×) |
+|---|--:|--|
+| YMG 7.81 · JNG 10.68 · CHA 7.11 · WAN 3.73 (over/under) · NGU 0.53 · GUP 0.67 · **DPZ 0.00** (weight clipped) | | |
+
+**Step 4 — mixed, and no new champion.** Eval wF1 (Raw* = same pipeline, no
+correction; normalized DPZ + no eval early-stopping, so Raw* ≠ published):
+
+| Method | Published | Raw* | Corrected | Δ | unhealthy recall raw→corr |
+|---|--:|--:|--:|--:|--|
+| Rank Averaging | 0.8157 | **0.8218** | 0.8208 | −0.001 | 0.668 → 0.645 |
+| CatBoost | 0.7860 | 0.7901 | 0.7530 | −0.037 | 0.638 → 0.336 |
+| Hard Voting | 0.7817 | 0.7859 | **0.8122** | **+0.026** | 0.292 → 0.492 |
+| Simple Average | 0.7585 | 0.7713 | **0.8113** | **+0.040** | 0.249 → 0.421 |
+| LightGBM | 0.7983 | 0.7826 | 0.6830 | −0.100 | 0.447 → 0.014 |
+| XGBoost | 0.7899 | 0.7836 | 0.6771 | −0.106 | 0.439 → 0.003 |
+| Geometric Mean | 0.7178 | 0.7296 | 0.7011 | −0.028 | 0.162 → 0.065 |
+| Random Forest | 0.6950 | 0.6906 | 0.6738 | −0.017 | 0.095 → 0.000 |
+
+Takeaways:
+* **BBSE helps the simple posterior-averaging methods** — simple average +0.040
+  and hard voting +0.026, each roughly *doubling* unhealthy recall — which is the
+  theoretically valid use (average BBSE-corrected posteriors).
+* **BBSE hurts the learned meta-learners** (XGB −0.106, LGB −0.100): feeding
+  BBSE-corrected inputs to a model trained on *uncorrected* inputs is not a valid
+  label-shift correction; it pushes features out of the training region and
+  collapses unhealthy recall.
+* **Rank averaging is unmoved** (shift-invariant) and **remains the champion at
+  0.8218** — no corrected method beats it. Normalizing DPZ (vs the cascade
+  hardening) is what lifts Raw* rank-averaging from 0.8157 to 0.8218.
+* Net: BBSE confirms and partially recovers the shift for weak ensembles but does
+  **not** produce a new best method. A pooled/ensemble-level BBSE weight (instead
+  of noisy per-model weights) is the natural next experiment.
+
 ## Files
 
 Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`,
-`conformal_results_lac.json`, `conformal_results_aps.json`.
+`conformal_results_lac.json`, `conformal_results_aps.json`, `bbse_results.json`,
+`baseline_table.csv`.
 Ignored binaries (regenerate by re-running the scripts): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
 
