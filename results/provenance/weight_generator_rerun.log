@@ -1,0 +1,68 @@
+PROVENANCE RECORD — Weight Generator (WeightGeneratorCluster, scripts/run_03_weight_generator.py)
+Citable source for best_val_wf1 = 0.8738 and eval unhealthy recall = 0.0801.
+date (UTC)   : 2026-07-23T18:13:21Z
+git HEAD     : 1ab542db960e57c8ad41aedfda6e08fe5e42c735
+interpreter  : E:\ps3c\ps3c-robust-inference\.venv\Scripts\python.exe 3.11.14
+command      : PYTHONUTF8=1 python scripts/run_03_weight_generator.py --data-dir E:/ps3c/ps3c-team-data --labels-dir E:/ps3c/ps3c-labels --out-dir <temp> --n-clusters 8 --epochs 100
+note         : --out-dir points to a scratch temp dir so committed results are untouched.
+========================================================================================
+Device: cpu  |  Clusters: 8
+
+Loading data...
+Rank Averaging (hold-out): 0.8157
+Simple Average (hold-out): 0.7585
+Train: 14527  Val: 3632  Eval: 29117
+Parameters: 12,111
+
+Training (100 epochs, patience=15)...
+  Epoch   1/100  loss=0.7123  val_wF1=0.8680 ← best
+  Epoch   2/100  loss=0.6908  val_wF1=0.8689 ← best
+  Epoch   3/100  loss=0.6693  val_wF1=0.8673 (no improve 1/15)
+  Epoch   4/100  loss=0.6443  val_wF1=0.8697 ← best
+  Epoch   5/100  loss=0.6169  val_wF1=0.8738 ← best
+  Epoch  10/100  loss=0.4727  val_wF1=0.8676 (no improve 5/15)
+  Epoch  20/100  loss=0.3610  val_wF1=0.8682 (no improve 15/15)
+
+  Early stop at epoch 20
+
+============================================================
+RESULTS — hold-out eval set
+============================================================
+  Rank Averaging baseline:    0.8157
+  WeightGenerator (cluster):  0.7039  ▼ -0.1117 vs rank avg
+  Best val wF1 during train:  0.8738
+
+Per-class report:
+              precision    recall  f1-score   support
+
+     healthy     0.6952    0.8579    0.7680     11609
+   unhealthy     0.9465    0.0801    0.1476      5521
+     rubbish     0.8248    0.9857    0.8981     11987
+
+    accuracy                         0.7630     29117
+   macro avg     0.8222    0.6412    0.6046     29117
+weighted avg     0.7962    0.7630    0.7039     29117
+
+Cluster team weights & dominant class:
+  Cluster     YMG   JNG   NGU   CHA   GUP   DPZ   WAN    Size  Dom.Class
+  0         0.150 0.149 0.146 0.133 0.139 0.150 0.134       0  —
+  1         0.149 0.150 0.148 0.133 0.138 0.149 0.134       0  —
+  2         0.169 0.172 0.133 0.109 0.150 0.157 0.109    3819  unhealthy
+  3         0.171 0.168 0.174 0.100 0.103 0.175 0.108   12394  healthy
+  4         0.149 0.149 0.146 0.134 0.139 0.149 0.135       0  —
+  5         0.149 0.149 0.148 0.135 0.137 0.149 0.134       0  —
+  6         0.174 0.170 0.179 0.101 0.100 0.178 0.098   12904  rubbish
+  7         0.149 0.149 0.147 0.133 0.138 0.149 0.134       0  —
+
+Mean team weight (all eval):
+  DPZ: 0.1740  ██████
+  YMG: 0.1723  ██████
+  NGU: 0.1701  ██████
+  JNG: 0.1695  ██████
+  GUP: 0.1082  ████
+  WAN: 0.1041  ████
+  CHA: 0.1017  ████
+
+Saved model → C:\Users\FLH\AppData\Local\Temp\claude\e--ps3c\240ccf29-5004-496a-b03f-c049af187dea\scratchpad\wg_rerun_prov/weight_generator_cluster.pt
+Saved results → C:\Users\FLH\AppData\Local\Temp\claude\e--ps3c\240ccf29-5004-496a-b03f-c049af187dea\scratchpad\wg_rerun_prov/weight_generator_results.json
+============================================================

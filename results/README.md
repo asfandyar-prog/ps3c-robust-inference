@@ -1,175 +1,193 @@
-# Results — canonical sample set & baseline table
+# PS3C Results — Stage 2 ensembling & label-shift analysis
 
-## Canonical sample set (cite this everywhere)
+Every number below is drawn from a saved file in this directory and cited inline.
+**Canonical sample set** = per-split intersection of image IDs scored by all 7
+teams (YMG, JNG, NGU, CHA, GUP, DPZ, WAN) ∩ annotated ground-truth labels:
+**test 18,159 / eval 29,117**. `run_01_verify.py` reproduces paper Table 2 for all
+14 team×split cells to the published four decimals.
 
-For each split, the evaluation set is the **intersection of image IDs scored by
-all 7 teams (YMG, JNG, NGU, CHA, GUP, DPZ, WAN), restricted to annotated
-ground-truth labels**. This single rule is implemented identically in
-`scripts/run_02_baselines.py` and `scripts/run_03_weight_generator.py`
-(`load_all`), so every metric below is computed on the same rows.
+---
 
-| Split | Role | N (canonical) |
-|-------|------|--------------:|
-| test  | train meta-learners | **18,159** |
-| eval  | hold-out evaluation | **29,117** |
+## a. The finding
 
-All 7 teams scored identical image sets, so the 7-way intersection equals each
-team's per-team count (verified by `scripts/run_01_verify.py`, which reproduces
-paper Table 2 exactly for all 14 team×split cells).
+Preprocessing induces a **label (prior) shift** between the test and eval splits.
+The unhealthy-class prior rises **0.0317 → 0.1896 (5.98×)**, confirmed directly
+against ground-truth eval labels (`bbse_results.json`: `true_test_prior`,
+`true_eval_prior`; `dataset_audit.json`: test unhealthy 576, eval unhealthy 5,521).
 
-> **Discrepancy resolved.** A prior rank-averaging value of 0.8199 came from the
-> *different* loader in `scripts/train_adaptive_ensemble.py`, not this canonical
-> intersection. The canonical rank-averaging number is **0.8157** and both
-> `run_02` and `run_03` now agree on it.
+Under this shift, **learned ensembling collapses** — every learned meta-learner
+falls below the parameter-free baselines, and the Weight Generator's strong
+validation score does not transfer (below). **Parameter-free rank averaging is
+robust by construction**: it is (near-)invariant to the shift and **remains the
+champion at 0.8218 eval wF1** on the normalized-DPZ pipeline (`bbse_results.json`),
+equivalently **0.8157** on the published cascade-DPZ pipeline
+(`ensemble_baselines.json`).
 
-## Baseline table — eval-set weighted F1 (hold-out, 29,117 samples)
+## b. Baseline ensemble table
 
-| Method | eval wF1 | vs rank-avg |
-|--------|---------:|------------:|
-| Simple Average | 0.7585 | −0.0571 |
-| Geometric Mean | 0.7178 | −0.0978 |
-| Hard Voting | 0.7817 | −0.0339 |
-| **Rank Averaging (canonical baseline)** | **0.8157** | +0.0000 |
-| Random Forest | 0.6950 | −0.1207 |
-| XGBoost | 0.7899 | −0.0258 |
-| LightGBM | 0.7983 | −0.0174 |
-| CatBoost | 0.7860 | −0.0297 |
+Published wF1 from `ensemble_baselines.json`; Raw* wF1 and unhealthy recall from
+`bbse_results.json` (`ensemble_raw_vs_corrected.*.raw_wf1` / `raw_unhealthy_recall`).
+**Raw\*** = the same 7 models with DPZ normalized to a distribution and
+meta-learners trained on raw test only (no eval early-stopping), so it differs
+slightly from the published column. The published column has no stored per-class
+recall; recall shown is Raw*.
 
-**Key finding:** every *learned* meta-learner (RF, XGB, LGB, CatBoost) falls
-below the non-learned rank-averaging baseline — the signature of the
-preprocessing-induced test→eval distribution shift.
+| Method | Published wF1 | Raw* wF1 | Raw* unhealthy recall |
+|---|--:|--:|--:|
+| **Rank Averaging** | **0.8157** | **0.8218** | 0.668 |
+| LightGBM | 0.7983 | 0.7826 | 0.447 |
+| XGBoost | 0.7899 | 0.7836 | 0.439 |
+| CatBoost | 0.7860 | 0.7901 | 0.638 |
+| Hard Voting | 0.7817 | 0.7859 | 0.292 |
+| Simple Average | 0.7585 | 0.7713 | 0.249 |
+| Geometric Mean | 0.7178 | 0.7296 | 0.162 |
+| Random Forest | 0.6950 | 0.6906 | 0.095 |
 
-## Weight Generator (Stage 2, cluster variant, 8 clusters)
+Every *learned* meta-learner (RF, XGB, LGB, CatBoost) sits below rank averaging —
+the signature of the shift.
 
-| Metric | Value |
-|--------|------:|
-| Best validation wF1 (on test split) | 0.8738 |
-| Eval wF1 (hold-out) | **0.7039** |
-| Δ vs rank averaging | −0.1117 |
-| Unhealthy-class recall (eval) | 0.080 |
+## c. Weight Generator variants — two DISTINCT models
 
-The generator learns a strong in-distribution head (val 0.8738) that collapses
-out-of-distribution (eval 0.7039), with unhealthy recall falling to ~8%. This is
-the central motivating result for the robustness framework.
+These are **two different Stage-2 models**, not one:
 
-## Stage 3 — conformal selective prediction (3-class, LAC)
+1. **WeightGeneratorCluster** (`scripts/run_03_weight_generator.py`; cluster-routing
+   attention, 8 clusters). Source `weight_generator_results.json`; provenance
+   `provenance/weight_generator_rerun.log`:
+   - best **validation** wF1 (test 80/20 split): **0.8738**
+   - eval wF1: **0.7039** (Δ −0.1117 vs rank averaging)
+   - eval **unhealthy recall: 0.0801**
+   The high validation wF1 (0.8738) beside 8% unhealthy recall on eval indicates
+   **collapse on the shifted class, not genuine performance**: it fits the
+   in-distribution (low-unhealthy) validation split, then fails to recognize the
+   eval-inflated unhealthy class.
 
-Driver: `scripts/run_04_conformal.py`, using `ConformalPredictor`
-(`src/ps3c_robust/selective/conformal.py`) in 3-class mode (bothcells dropped).
-Method: split-conformal **LAC** (Sadinle et al., 2019). The ensemble is fed to the
-conformal predictor in two forms — `rank_average` (canonical champion) and
-`simple_average` (mean of the raw team probabilities). The test split is divided
-50/50 into calibration (9,079) / hold-out (9,080), stratified, seed 42.
+2. **AdaptiveEnsemble** (`src/ps3c_robust/ensemble/adaptive.py`; attention head
+   over teams). eval wF1 **0.7479**. ⚠️ Source
+   `ps3c-results/adaptive_ensemble_results.txt` (2026-06-18) — computed on a
+   **non-canonical** sample set (its rank-averaging reference is 0.8199, not the
+   canonical 0.8157) and **not re-run** on the canonical 18,159/29,117 set. Report
+   as indicative only; not directly comparable to the tables above.
 
-**Scenario 1 — within-test (exchangeable): the guarantee holds.** Both
-representations achieve empirical coverage within ±0.006 of 1−α for
-α ∈ {0.05, 0.10, 0.15, 0.20}.
+## d. BBSE label-shift correction
 
-**Scenario 2 — cross-split (calibrate on test → predict on eval):**
-
-| α | target | rank_average cov | simple_average cov |
-|--:|-------:|-----------------:|-------------------:|
-| 0.05 | 0.95 | 0.998 (+0.048) | **0.936 (−0.013)** |
-| 0.10 | 0.90 | 0.978 (+0.077) | **0.844 (−0.056)** |
-| 0.15 | 0.85 | 0.940 (+0.090) | **0.767 (−0.083)** |
-| 0.20 | 0.80 | 0.892 (+0.092) | **0.700 (−0.101)** |
-
-`simple_average` **under-covers at every α** (the selective-prediction evidence
-for the shift); `rank_average` over-covers because it is shift-invariant.
-
-**Two methodological findings (flagged for review):**
-1. **Method.** APS originally under-covered even within-test: `conformal.py`
-   randomized the *calibration* score but built prediction sets *non-randomized*.
-   Fixed `_build_sets` to use the randomized APS inclusion rule (Romano et al.,
-   2020), so **both LAC and APS now meet the within-test guarantee** (compare
-   `conformal_results_lac.json` and `conformal_results_aps.json`). LAC remains the
-   default and gives the cleaner shift demonstration; APS builds larger adaptive
-   sets that stay more conservative under the shift.
-2. **Representation.** Rank-averaging is invariant to the test→eval shift (its
-   per-class marginals are near-identical across splits: `[0.33,0.33,0.35]` vs
-   `[0.33,0.33,0.35]`), so it *cannot* exhibit under-coverage. Simple-average
-   tracks the shift (`[0.35,0.06,0.60]` → `[0.43,0.11,0.46]`) and does. This
-   corroborates why rank-averaging is the robust point-prediction champion.
-
-## BBSE label-shift correction (3-class, normalized DPZ)
-
-Driver: `scripts/run_05_bbse.py`, functions in `src/ps3c_robust/adapt/bbse.py`
+Driver `scripts/run_05_bbse.py`; functions `src/ps3c_robust/adapt/bbse.py`
 (BBSE-hard: joint confusion matrix from argmax test predictions vs true test
-labels → least-squares weights → clip ≥0 → target prior; correction
-`p(y|x)·w(y)`). Post-hoc on saved probabilities only — no model is retrained.
-DPZ (no softmax) is normalized to a pseudo-distribution and used consistently in
-the raw and corrected ensembles. Results in `bbse_results.json`.
+labels → least-squares weights → clip ≥0 → target prior; correction `p(y|x)·w(y)`).
+Post-hoc on saved probabilities only — no retraining. DPZ normalized. Source
+`bbse_results.json`.
 
-**Step 2 — the label-shift hypothesis is confirmed, but per-model estimates are
-noisy.** True unhealthy prior rises 0.0317 → 0.1896 (5.98×). BBSE's *mean*
-estimated eval prior recovers the direction (unhealthy 0.0317 → 0.1383, ~4.4×;
-L1 error vs truth 0.1026), but per-model estimates scatter badly because the
-unhealthy column of every confusion matrix rests on only 576 test samples with
-low model recall:
+BBSE's *mean* estimated eval prior recovers the shift direction (unhealthy
+0.0317 → 0.1383, ~4.4×; L1 error vs truth 0.1026), but per-model estimates are
+noisy (see limitations). Corrected ensemble eval wF1 (Δ vs Raw*):
 
-| model | est. unhealthy ratio q/p_test | (true 5.98×) |
-|---|--:|--|
-| YMG 7.81 · JNG 10.68 · CHA 7.11 · WAN 3.73 (over/under) · NGU 0.53 · GUP 0.67 · **DPZ 0.00** (weight clipped) | | |
+| Method | Raw* | Corrected | Δ | unhealthy recall raw→corr |
+|---|--:|--:|--:|--|
+| Rank Averaging | 0.8218 | 0.8208 | −0.001 | 0.668 → 0.645 |
+| Simple Average | 0.7713 | **0.8113** | **+0.040** | 0.249 → 0.421 |
+| Hard Voting | 0.7859 | **0.8122** | **+0.026** | 0.292 → 0.492 |
+| Geometric Mean | 0.7296 | 0.7011 | −0.028 | 0.162 → 0.065 |
+| CatBoost | 0.7901 | 0.7530 | −0.037 | 0.638 → 0.336 |
+| Random Forest | 0.6906 | 0.6738 | −0.017 | 0.095 → 0.000 |
+| LightGBM | 0.7826 | 0.6830 | −0.100 | 0.447 → 0.014 |
+| XGBoost | 0.7836 | 0.6771 | −0.106 | 0.439 → 0.003 |
 
-**Step 4 — mixed, and no new champion.** Eval wF1 (Raw* = same pipeline, no
-correction; normalized DPZ + no eval early-stopping, so Raw* ≠ published):
+BBSE **helps simple posterior averaging** — simple average **+0.040**, hard voting
+**+0.026**, each roughly doubling unhealthy recall (the theoretically valid use:
+averaging BBSE-corrected posteriors). It **harms the meta-learners** here because
+corrected eval inputs are fed to models trained on *uncorrected* inputs — a
+train/serve mismatch, addressed in (e). No corrected method beats rank averaging.
 
-| Method | Published | Raw* | Corrected | Δ | unhealthy recall raw→corr |
-|---|--:|--:|--:|--:|--|
-| Rank Averaging | 0.8157 | **0.8218** | 0.8208 | −0.001 | 0.668 → 0.645 |
-| CatBoost | 0.7860 | 0.7901 | 0.7530 | −0.037 | 0.638 → 0.336 |
-| Hard Voting | 0.7817 | 0.7859 | **0.8122** | **+0.026** | 0.292 → 0.492 |
-| Simple Average | 0.7585 | 0.7713 | **0.8113** | **+0.040** | 0.249 → 0.421 |
-| LightGBM | 0.7983 | 0.7826 | 0.6830 | −0.100 | 0.447 → 0.014 |
-| XGBoost | 0.7899 | 0.7836 | 0.6771 | −0.106 | 0.439 → 0.003 |
-| Geometric Mean | 0.7178 | 0.7296 | 0.7011 | −0.028 | 0.162 → 0.065 |
-| Random Forest | 0.6950 | 0.6906 | 0.6738 | −0.017 | 0.095 → 0.000 |
+## e. Matched-correction ablation (closes the mismatch objection)
 
-Takeaways:
-* **BBSE helps the simple posterior-averaging methods** — simple average +0.040
-  and hard voting +0.026, each roughly *doubling* unhealthy recall — which is the
-  theoretically valid use (average BBSE-corrected posteriors).
-* **BBSE hurts the learned meta-learners** (XGB −0.106, LGB −0.100): feeding
-  BBSE-corrected inputs to a model trained on *uncorrected* inputs is not a valid
-  label-shift correction; it pushes features out of the training region and
-  collapses unhealthy recall.
-* **Rank averaging is unmoved** (shift-invariant) and **remains the champion at
-  0.8218** — no corrected method beats it. Normalizing DPZ (vs the cascade
-  hardening) is what lifts Raw* rank-averaging from 0.8157 to 0.8218.
-* Net: BBSE confirms and partially recovers the shift for weak ensembles but does
-  **not** produce a new best method. A pooled/ensemble-level BBSE weight (instead
-  of noisy per-model weights) is the natural next experiment.
-
-**Matched-correction follow-up** (`scripts/run_06_bbse_matched.py`,
-`bbse_matched_results.json`): retraining the 4 meta-learners on BBSE-corrected
-*test* probs and evaluating on corrected eval probs (same weights, loaded not
-re-estimated; hyperparameters unchanged; base models untouched) confirms the (b)
-collapse was a train/serve **input-mismatch artifact**, not a failure of
-correction. Eval wF1 across the three matched conditions:
+Driver `scripts/run_06_bbse_matched.py`; source `bbse_matched_results.json`.
+Meta-learners **retrained on BBSE-corrected test probs** and evaluated on corrected
+eval probs, using the **exact** per-model weights from `bbse_results.json` (loaded,
+not re-estimated), hyperparameters unchanged, 7 base models untouched. Eval wF1:
 
 | meta-learner | (a) raw/raw | (b) raw/corr | (c) corr/corr | unhealthy recall a→c |
 |---|--:|--:|--:|--|
-| XGBoost | 0.7836 | 0.6771 | **0.7905** | 0.439→0.485 |
-| LightGBM | 0.7826 | 0.6830 | 0.7821 | 0.447→0.455 |
-| CatBoost | 0.7901 | 0.7530 | 0.7828 | 0.638→0.698 |
-| Random Forest | 0.6906 | 0.6738 | 0.7013 | 0.095→0.134 |
+| XGBoost | 0.7836 | 0.6771 | **0.7905** | 0.439 → 0.485 |
+| LightGBM | 0.7826 | 0.6830 | 0.7821 | 0.447 → 0.455 |
+| CatBoost | 0.7901 | 0.7530 | 0.7828 | 0.638 → 0.698 |
+| Random Forest | 0.6906 | 0.6738 | 0.7013 | 0.095 → 0.134 |
 
-Matched correction (c) recovers every learner to ~its raw baseline (XGB/RF
-marginally above; LGB/CB flat) and restores unhealthy recall — but **none reaches
-rank averaging (0.8218)**. Negative result, as expected: correction doesn't break
-the learned methods, it just doesn't beat the shift-invariant champion.
+The (b) collapse was a **train/serve input-mismatch artifact**: matched training
+(c) recovers every learner to ~its raw baseline (XGB/RF marginally above; LGB/CB
+flat) and restores unhealthy recall — but **none reaches rank averaging (0.8218)**.
+Negative result, as expected: correction neither breaks the learned methods nor
+beats the shift-invariant champion.
+
+## f. Known limitations (plainly)
+
+Sources: `bbse_results.json`, `dataset_audit.json`.
+
+- **BBSE unhealthy weight is ill-conditioned.** Only **576** test unhealthy samples
+  (`dataset_audit.json`) with low model recall. Per-model unhealthy shift weight
+  spans **0.00× (DPZ, clipped to zero) / 0.53× (NGU) to 10.68× (JNG)** against the
+  true 5.98× (`bbse_results.json` → `bbse_per_model[*].weights[1]`). Mean-estimate
+  L1 error 0.1026. (Note: the low end is 0.00×, not 0.53× — DPZ's weight is clipped
+  to zero; 0.53× is NGU, the lowest non-clipped.)
+- **DPZ emits independent per-class scores, not a distribution.** Only 15.4% of
+  test / 17.9% of eval rows sum to ~1 (`dataset_audit.json`); normalized to a
+  pseudo-distribution for consistency across raw and corrected pipelines. Its BBSE
+  unhealthy weight is clipped to 0.
+- **NGU is near one-hot** — 95.4% of test / 94.8% of eval predictions have
+  max-prob > 0.999 (`dataset_audit.json`); posterior correction has minimal effect.
+- **bothcells is absent from both annotated label sets** — all evaluation is
+  3-class (`dataset_audit.json`: `bothcells_present_in_label_sets = false`; counts
+  contain only healthy/unhealthy/rubbish).
+- **run_03 provenance.** `run_03_weight_generator.py` was untracked before
+  2026-07-02, so its pre-July history is not in git. All surviving copies have
+  behavior-identical attention, and the result reproduces bit-identically (eval
+  `0.7039267226916234` on 2026-07-02 and again this session; see
+  `provenance/weight_generator_rerun.log`). No attention-mechanism fix is recorded
+  anywhere for this model; the only "attention" edits in git history are no-op
+  whitespace changes to the *separate* `AdaptiveEnsemble`.
+
+## g. Reproduction — script → numbers → file
+
+| Numbers | Script | Results file |
+|---|---|---|
+| Table 2 reproduction (14 cells) | `run_01_verify.py` | console (git history) |
+| Baseline ensemble (published wF1) | `run_02_baselines.py` | `ensemble_baselines.json`, `baseline_table.csv` |
+| Weight Generator 0.8738 / 0.7039 / 0.0801 | `run_03_weight_generator.py` | `weight_generator_results.json`, `provenance/weight_generator_rerun.log` |
+| Conformal coverage | `run_04_conformal.py` | `conformal_results_lac.json`, `conformal_results_aps.json` |
+| BBSE priors/weights + raw-vs-corrected | `run_05_bbse.py` | `bbse_results.json` |
+| Matched-correction (a/b/c) | `run_06_bbse_matched.py` | `bbse_matched_results.json` |
+| Dataset audit (soft stats, class counts) | audit script | `dataset_audit.json` |
+| AdaptiveEnsemble 0.7479 (non-canonical) | `train_adaptive_ensemble.py` | `ps3c-results/adaptive_ensemble_results.txt` |
+
+All runs use venv Python 3.11; on Windows prefix `PYTHONUTF8=1`. Example:
+```
+python scripts/run_03_weight_generator.py --data-dir <team-data> --labels-dir <labels> --out-dir results --n-clusters 8 --epochs 100
+```
+
+---
+
+## Stage 3 — conformal selective prediction (kept for completeness)
+
+Driver `scripts/run_04_conformal.py`, using `ConformalPredictor`
+(`src/ps3c_robust/selective/conformal.py`) in 3-class mode. Method LAC (default);
+APS also valid after fixing a randomization asymmetry. Test split 50/50 →
+calibration/hold-out, seed 42. Within-test coverage holds (±0.006 of 1−α).
+Cross-split (calibrate test → predict eval), simple-average ensemble
+under-covers — the selective-prediction signature of the shift
+(`conformal_results_lac.json`):
+
+| α | target | rank_average cov | simple_average cov |
+|--:|--:|--:|--:|
+| 0.05 | 0.95 | 0.998 | 0.9365 |
+| 0.10 | 0.90 | 0.978 | 0.8436 |
+| 0.15 | 0.85 | 0.940 | 0.7668 |
+| 0.20 | 0.80 | 0.892 | 0.6995 |
+
+rank_average over-covers (shift-invariant); simple_average under-covers at every α.
 
 ## Files
 
-Tracked (JSON summaries): `ensemble_baselines.json`, `weight_generator_results.json`,
-`conformal_results_lac.json`, `conformal_results_aps.json`, `bbse_results.json`,
-`bbse_matched_results.json`, `baseline_table.csv`.
-Ignored binaries (regenerate by re-running the scripts): `weight_generator_cluster.pt`,
+Tracked JSON/text: `ensemble_baselines.json`, `weight_generator_results.json`,
+`bbse_results.json`, `bbse_matched_results.json`, `conformal_results_lac.json`,
+`conformal_results_aps.json`, `dataset_audit.json`, `baseline_table.csv`,
+`provenance/weight_generator_rerun.log`.
+Ignored binaries (regenerate by re-running): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
-
-Reproduce:
-```
-python scripts/run_02_baselines.py       --data-dir <team-data> --labels-dir <labels> --out-dir results
-python scripts/run_03_weight_generator.py --data-dir <team-data> --labels-dir <labels> --out-dir results --n-clusters 8 --epochs 100
-```
-(On Windows, prefix with `PYTHONUTF8=1` so console glyphs encode correctly.)

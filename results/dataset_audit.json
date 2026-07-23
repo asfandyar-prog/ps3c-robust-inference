@@ -1,0 +1,102 @@
+{
+  "label_class_counts": {
+    "test": {
+      "healthy": 5826,
+      "rubbish": 11757,
+      "unhealthy": 576
+    },
+    "eval": {
+      "healthy": 11609,
+      "unhealthy": 5521,
+      "rubbish": 11987
+    }
+  },
+  "bothcells_present_in_label_sets": false,
+  "per_model_soft_stats": {
+    "YMG": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 0.8588,
+        "frac_hard_gt_0p999": 0.1356
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 0.7172,
+        "frac_hard_gt_0p999": 0.033
+      }
+    },
+    "JNG": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.1878
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.0
+      }
+    },
+    "NGU": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.9541
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.9477
+      }
+    },
+    "CHA": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.0
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.0
+      }
+    },
+    "GUP": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.0
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.0
+      }
+    },
+    "DPZ": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 0.1535,
+        "frac_hard_gt_0p999": 0.0026
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 0.1788,
+        "frac_hard_gt_0p999": 0.001
+      }
+    },
+    "WAN": {
+      "test": {
+        "n": 18159,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.1954
+      },
+      "eval": {
+        "n": 29117,
+        "rawsum_near1_frac": 1.0,
+        "frac_hard_gt_0p999": 0.2093
+      }
+    }
+  },
+  "note": "rawsum_near1_frac: fraction of rows whose 3 class values already sum to ~1 (a proper distribution). frac_hard_gt_0p999: fraction with max normalized prob > 0.999 (near one-hot)."
+}

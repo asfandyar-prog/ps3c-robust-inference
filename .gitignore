@@ -98,6 +98,8 @@ checkpoints/
 
 # Logs
 *.log
+# ...but provenance run logs are citable artifacts — keep them tracked
+!results/provenance/*.log
 
 # --- Paper artifacts ------------------------------------------------------
 paper/*.aux

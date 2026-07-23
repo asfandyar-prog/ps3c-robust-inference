@@ -17,24 +17,68 @@
 
 ## Status
 
-This is an active research project under the supervision of Prof. Balazs Harangi (University of Debrecen). The framework is implemented and the data ingest works on real team outputs. Baseline reproduction is in progress, pending the official ground-truth labels.
+Active research project under Prof. Balazs Harangi (University of Debrecen). The
+official ground-truth labels are now in hand; **all seven** teams' probability
+outputs are ingested and aligned, paper Table 2 is reproduced exactly, and
+**Stage 2 ensembling plus a label-shift (BBSE) analysis are complete**. Stage 1
+(TTA) and Stage 3 (conformal) frameworks are implemented; Stage 1 on real data
+remains blocked on the APACC dataset + HPC.
 
 | Component | Status | Notes |
 |---|---|---|
 | Repository scaffold | Complete | uv + Python 3.11 |
-| Stage 1 framework (TTA) | Implemented | Ported from BSc thesis |
-| Stage 2 framework (ensemble) | Implemented | Sample-adaptive attention head |
-| Stage 3 framework (conformal) | Implemented | Split-conformal with deferral |
-| Metrics (F1, ECE, coverage, selective risk) | Implemented | ECE is the calibration metric the original challenge did not report |
-| Six-team probability ingest | Working | Aligns all six teams by image name across both splits |
-| Baseline reproduction | In progress | Runs end to end; numbers not yet final (see note below) |
-| Official ground-truth labels | Pending | Needed to finalize the baseline |
-| Stage 1, 2, 3 experiments on real data | Planned | After labels are confirmed |
-| Workshop paper | Planned | Target: a 2027 venue (MIDL / ISBI) |
+| Official ground-truth labels | **Obtained** | annotated test + eval sets |
+| Seven-team probability ingest | **Complete** | all 7 teams aligned by image name, both splits |
+| Baseline reproduction (paper Table 2) | **Reproduced** | 14/14 cells to 4 decimals (`run_01_verify.py`) |
+| Stage 2 — ensemble baselines + Weight Generator | **Complete** | see Results |
+| Label-shift (BBSE) analysis | **Complete** | `run_05` / `run_06`, see Results |
+| Stage 3 (conformal) | Implemented + run | `run_04_conformal.py` |
+| Stage 1 (TTA) | Implemented | on real data blocked on APACC + HPC |
+| Journal / workshop paper | In progress | Target: MIDL / ISBI 2027 |
 
-> **Why the baseline is not final yet.** The six teams' probability files each contain their own `label` column, but these disagree in a few hundred cases (175 on test, 496 on evaluation), so they are not an authoritative reference. Until the official APACC label file is available, reproduced F1 numbers will not exactly match the published paper. The ingest and the pipeline are complete; only the answer key is missing.
+---
 
-> **Data availability.** Six of the seven challenge teams' outputs are in hand (YMG, JNG, CHA, GUP, DPZ, WAN). The seventh (NGU) was not among the shared files and its code ships without trained weights, so the current work proceeds with six teams.
+## Results (Stage 2 & label-shift analysis)
+
+Full detail with every number cited to a file: **[`results/README.md`](results/README.md)**.
+Canonical sample set = per-split intersection of image IDs scored by all 7 teams ∩
+annotated labels: **test 18,159 / eval 29,117**.
+
+**The finding.** Preprocessing induces a **label (prior) shift** between test and
+eval: the unhealthy prior rises **0.0317 → 0.1896 (5.98×)**, confirmed against
+ground-truth eval labels. Learned ensembling collapses under it; parameter-free
+**rank averaging is shift-invariant by construction and remains the champion at
+0.8218 eval wF1** (0.8157 on the published cascade-DPZ pipeline).
+
+**Baseline ensemble** (eval wF1; published from `ensemble_baselines.json`, Raw* +
+unhealthy recall from `bbse_results.json`):
+
+| Method | Published wF1 | Raw* wF1 | Raw* unhealthy recall |
+|---|--:|--:|--:|
+| **Rank Averaging** | **0.8157** | **0.8218** | 0.668 |
+| LightGBM | 0.7983 | 0.7826 | 0.447 |
+| XGBoost | 0.7899 | 0.7836 | 0.439 |
+| CatBoost | 0.7860 | 0.7901 | 0.638 |
+| Hard Voting | 0.7817 | 0.7859 | 0.292 |
+| Simple Average | 0.7585 | 0.7713 | 0.249 |
+| Geometric Mean | 0.7178 | 0.7296 | 0.162 |
+| Random Forest | 0.6950 | 0.6906 | 0.095 |
+
+**Weight Generator — two distinct models.** *WeightGeneratorCluster*
+(`run_03`, `weight_generator_results.json`): validation wF1 **0.8738** but eval
+wF1 **0.7039** with **8.0% unhealthy recall** — the high val score is collapse on
+the shifted class, not genuine performance. *AdaptiveEnsemble* (`adaptive.py`):
+eval wF1 **0.7479** (non-canonical sample set; not re-run on the canonical split).
+
+**BBSE label-shift correction** (`run_05`, `bbse_results.json`). Applied post-hoc,
+no retraining. Helps simple posterior averaging (simple average **+0.040**, hard
+voting **+0.026**, each ~doubling unhealthy recall) and harms the mismatched
+meta-learners. The matched-correction ablation (`run_06`, `bbse_matched_results.json`)
+shows that collapse was a train/serve input mismatch — retraining on corrected
+inputs recovers the learners (best XGBoost 0.7905) — but **no corrected method
+beats rank averaging (0.8218)**. Known limitations (BBSE unhealthy weight
+ill-conditioned; DPZ non-distributional; NGU near one-hot; 3-class only) are
+enumerated in [`results/README.md`](results/README.md).
 
 ---
 
@@ -151,11 +195,16 @@ uv pip install -e ".[dev]"
 pytest -v
 ```
 
-To reproduce the six-team baseline (requires the team probability files arranged as the organizer share):
+To reproduce the seven-team baseline and Stage-2 analysis (requires the team
+probability files and the annotated label files):
 
 ```bash
-python scripts/reproduce_baseline.py --data-dir /path/to/ps3c-team-data
+python scripts/run_01_verify.py         --data-dir <team-data> --labels-dir <labels>   # Table 2, 14/14 cells
+python scripts/run_02_baselines.py      --data-dir <team-data> --labels-dir <labels> --out-dir results
+python scripts/run_03_weight_generator.py --data-dir <team-data> --labels-dir <labels> --out-dir results --n-clusters 8 --epochs 100
+python scripts/run_05_bbse.py           --data-dir <team-data> --labels-dir <labels> --out-dir results
 ```
+See [`results/README.md`](results/README.md) for which script produces which number.
 
 ---
 
@@ -200,14 +249,15 @@ The thesis develops LayerNorm-only entropy minimization as a TTA mechanism on Me
 - [x] Stage 2 sample-adaptive ensemble head
 - [x] Stage 3 split-conformal predictor with deferral
 - [x] Metrics: macro F1, ECE, coverage, selective risk
-- [x] Six-team probability ingest and alignment
-- [ ] Obtain official APACC ground-truth labels
-- [ ] Finalize baseline reproduction against official labels
-- [ ] Stage 1 evaluation: F1 and ECE per team, with and without TTA
+- [x] Seven-team probability ingest and alignment
+- [x] Obtain official APACC ground-truth labels
+- [x] Finalize baseline reproduction against official labels (Table 2, 14/14 cells)
+- [x] Stage 2 evaluation: ensemble baselines + Weight Generator vs rank averaging
+- [x] Label-shift (BBSE) analysis: diagnostic, correction, matched-correction ablation
+- [x] Stage 3 run: conformal coverage (within-test vs cross-split)
+- [ ] Stage 1 evaluation on real data: F1 and ECE per team, with and without TTA (blocked on APACC + HPC)
 - [ ] Stage 1 ablation: LayerNorm vs BatchNorm in hybrid models
-- [ ] Stage 2 evaluation: adaptive ensemble vs gradient-boost stacking
-- [ ] Stage 3 evaluation: coverage, deferral rate, bothcells routing
-- [ ] Workshop paper draft
+- [ ] Journal / workshop paper draft
 
 ---
 
