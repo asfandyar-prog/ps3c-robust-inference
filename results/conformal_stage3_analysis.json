@@ -1,0 +1,500 @@
+{
+  "method": "lac",
+  "canonical_n": {
+    "test": 18159,
+    "eval": 29117
+  },
+  "alphas": [
+    0.05,
+    0.1,
+    0.15,
+    0.2
+  ],
+  "eval_split": {
+    "calibration": 14558,
+    "holdout": 14559
+  },
+  "deferral_definition": "prediction-set size != 1 (empty sets are deferred)",
+  "experiment_1_shift_attribution": {
+    "rank_average": {
+      "test_calibrated_full_eval": {
+        "0.05": 0.9978,
+        "0.10": 0.9775,
+        "0.15": 0.9403,
+        "0.20": 0.892
+      },
+      "test_calibrated_eval_holdout": {
+        "0.05": 0.998,
+        "0.10": 0.9771,
+        "0.15": 0.9412,
+        "0.20": 0.8928
+      },
+      "eval_calibrated_eval_holdout": {
+        "0.05": 0.9508,
+        "0.10": 0.9016,
+        "0.15": 0.852,
+        "0.20": 0.7994
+      }
+    },
+    "simple_average": {
+      "test_calibrated_full_eval": {
+        "0.05": 0.9365,
+        "0.10": 0.8436,
+        "0.15": 0.7668,
+        "0.20": 0.6995
+      },
+      "test_calibrated_eval_holdout": {
+        "0.05": 0.9389,
+        "0.10": 0.8436,
+        "0.15": 0.7656,
+        "0.20": 0.6972
+      },
+      "eval_calibrated_eval_holdout": {
+        "0.05": 0.9554,
+        "0.10": 0.9003,
+        "0.15": 0.8483,
+        "0.20": 0.7991
+      }
+    }
+  },
+  "experiment_2_deferred_set": {
+    "rank_average": {
+      "0.05": {
+        "coverage": 0.9978,
+        "accept_rate": 0.0567,
+        "defer_rate": 0.9433,
+        "set_size_counts": {
+          "empty_0": 0,
+          "singleton_1": 1652,
+          "doubleton_2": 17504,
+          "full_3": 9961
+        },
+        "full_accuracy": 0.8163,
+        "full_wf1": 0.8157,
+        "accepted_accuracy": 0.9976,
+        "accepted_wf1": 0.9976,
+        "deferred_composition": {
+          "healthy": {
+            "n": 11468,
+            "frac": 0.4175
+          },
+          "unhealthy": {
+            "n": 5460,
+            "frac": 0.1988
+          },
+          "rubbish": {
+            "n": 10537,
+            "frac": 0.3837
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 141,
+            "frac": 0.0854
+          },
+          "unhealthy": {
+            "n": 61,
+            "frac": 0.0369
+          },
+          "rubbish": {
+            "n": 1450,
+            "frac": 0.8777
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.1988,
+          "accepted": 0.0369
+        }
+      },
+      "0.10": {
+        "coverage": 0.9775,
+        "accept_rate": 0.257,
+        "defer_rate": 0.743,
+        "set_size_counts": {
+          "empty_0": 0,
+          "singleton_1": 7483,
+          "doubleton_2": 19153,
+          "full_3": 2481
+        },
+        "full_accuracy": 0.8163,
+        "full_wf1": 0.8157,
+        "accepted_accuracy": 0.9789,
+        "accepted_wf1": 0.9787,
+        "deferred_composition": {
+          "healthy": {
+            "n": 10072,
+            "frac": 0.4656
+          },
+          "unhealthy": {
+            "n": 5059,
+            "frac": 0.2338
+          },
+          "rubbish": {
+            "n": 6503,
+            "frac": 0.3006
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 1537,
+            "frac": 0.2054
+          },
+          "unhealthy": {
+            "n": 462,
+            "frac": 0.0617
+          },
+          "rubbish": {
+            "n": 5484,
+            "frac": 0.7329
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.2338,
+          "accepted": 0.0617
+        }
+      },
+      "0.15": {
+        "coverage": 0.9403,
+        "accept_rate": 0.5277,
+        "defer_rate": 0.4723,
+        "set_size_counts": {
+          "empty_0": 0,
+          "singleton_1": 15366,
+          "doubleton_2": 13545,
+          "full_3": 206
+        },
+        "full_accuracy": 0.8163,
+        "full_wf1": 0.8157,
+        "accepted_accuracy": 0.9329,
+        "accepted_wf1": 0.932,
+        "deferred_composition": {
+          "healthy": {
+            "n": 7183,
+            "frac": 0.5224
+          },
+          "unhealthy": {
+            "n": 3921,
+            "frac": 0.2851
+          },
+          "rubbish": {
+            "n": 2647,
+            "frac": 0.1925
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 4426,
+            "frac": 0.288
+          },
+          "unhealthy": {
+            "n": 1600,
+            "frac": 0.1041
+          },
+          "rubbish": {
+            "n": 9340,
+            "frac": 0.6078
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.2851,
+          "accepted": 0.1041
+        }
+      },
+      "0.20": {
+        "coverage": 0.892,
+        "accept_rate": 0.7644,
+        "defer_rate": 0.2356,
+        "set_size_counts": {
+          "empty_0": 218,
+          "singleton_1": 22256,
+          "doubleton_2": 6643,
+          "full_3": 0
+        },
+        "full_accuracy": 0.8163,
+        "full_wf1": 0.8157,
+        "accepted_accuracy": 0.8768,
+        "accepted_wf1": 0.8764,
+        "deferred_composition": {
+          "healthy": {
+            "n": 3815,
+            "frac": 0.556
+          },
+          "unhealthy": {
+            "n": 2523,
+            "frac": 0.3677
+          },
+          "rubbish": {
+            "n": 523,
+            "frac": 0.0762
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 7794,
+            "frac": 0.3502
+          },
+          "unhealthy": {
+            "n": 2998,
+            "frac": 0.1347
+          },
+          "rubbish": {
+            "n": 11464,
+            "frac": 0.5151
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.3677,
+          "accepted": 0.1347
+        }
+      }
+    },
+    "simple_average": {
+      "0.05": {
+        "coverage": 0.9365,
+        "accept_rate": 0.6498,
+        "defer_rate": 0.3502,
+        "set_size_counts": {
+          "empty_0": 0,
+          "singleton_1": 18919,
+          "doubleton_2": 9004,
+          "full_3": 1194
+        },
+        "full_accuracy": 0.7947,
+        "full_wf1": 0.7585,
+        "accepted_accuracy": 0.9273,
+        "accepted_wf1": 0.9076,
+        "deferred_composition": {
+          "healthy": {
+            "n": 4652,
+            "frac": 0.4562
+          },
+          "unhealthy": {
+            "n": 4267,
+            "frac": 0.4184
+          },
+          "rubbish": {
+            "n": 1279,
+            "frac": 0.1254
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 6957,
+            "frac": 0.3677
+          },
+          "unhealthy": {
+            "n": 1254,
+            "frac": 0.0663
+          },
+          "rubbish": {
+            "n": 10708,
+            "frac": 0.566
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.4184,
+          "accepted": 0.0663
+        }
+      },
+      "0.10": {
+        "coverage": 0.8436,
+        "accept_rate": 0.8952,
+        "defer_rate": 0.1048,
+        "set_size_counts": {
+          "empty_0": 0,
+          "singleton_1": 26066,
+          "doubleton_2": 3051,
+          "full_3": 0
+        },
+        "full_accuracy": 0.7947,
+        "full_wf1": 0.7585,
+        "accepted_accuracy": 0.8327,
+        "accepted_wf1": 0.7953,
+        "deferred_composition": {
+          "healthy": {
+            "n": 1172,
+            "frac": 0.3841
+          },
+          "unhealthy": {
+            "n": 1588,
+            "frac": 0.5205
+          },
+          "rubbish": {
+            "n": 291,
+            "frac": 0.0954
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 10437,
+            "frac": 0.4004
+          },
+          "unhealthy": {
+            "n": 3933,
+            "frac": 0.1509
+          },
+          "rubbish": {
+            "n": 11696,
+            "frac": 0.4487
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.5205,
+          "accepted": 0.1509
+        }
+      },
+      "0.15": {
+        "coverage": 0.7668,
+        "accept_rate": 0.9358,
+        "defer_rate": 0.0642,
+        "set_size_counts": {
+          "empty_0": 1868,
+          "singleton_1": 27249,
+          "doubleton_2": 0,
+          "full_3": 0
+        },
+        "full_accuracy": 0.7947,
+        "full_wf1": 0.7585,
+        "accepted_accuracy": 0.8194,
+        "accepted_wf1": 0.7829,
+        "deferred_composition": {
+          "healthy": {
+            "n": 641,
+            "frac": 0.3431
+          },
+          "unhealthy": {
+            "n": 1057,
+            "frac": 0.5658
+          },
+          "rubbish": {
+            "n": 170,
+            "frac": 0.091
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 10968,
+            "frac": 0.4025
+          },
+          "unhealthy": {
+            "n": 4464,
+            "frac": 0.1638
+          },
+          "rubbish": {
+            "n": 11817,
+            "frac": 0.4337
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.5658,
+          "accepted": 0.1638
+        }
+      },
+      "0.20": {
+        "coverage": 0.6995,
+        "accept_rate": 0.7981,
+        "defer_rate": 0.2019,
+        "set_size_counts": {
+          "empty_0": 5880,
+          "singleton_1": 23237,
+          "doubleton_2": 0,
+          "full_3": 0
+        },
+        "full_accuracy": 0.7947,
+        "full_wf1": 0.7585,
+        "accepted_accuracy": 0.8765,
+        "accepted_wf1": 0.8461,
+        "deferred_composition": {
+          "healthy": {
+            "n": 2327,
+            "frac": 0.3957
+          },
+          "unhealthy": {
+            "n": 2957,
+            "frac": 0.5029
+          },
+          "rubbish": {
+            "n": 596,
+            "frac": 0.1014
+          }
+        },
+        "accepted_composition": {
+          "healthy": {
+            "n": 9282,
+            "frac": 0.3994
+          },
+          "unhealthy": {
+            "n": 2564,
+            "frac": 0.1103
+          },
+          "rubbish": {
+            "n": 11391,
+            "frac": 0.4902
+          }
+        },
+        "unhealthy_fraction": {
+          "overall": 0.1896,
+          "deferred": 0.5029,
+          "accepted": 0.1103
+        }
+      }
+    }
+  },
+  "experiment_3_bothcells": {
+    "test_label_counts": {
+      "healthy": 5826,
+      "rubbish": 11757,
+      "unhealthy": 576
+    },
+    "eval_label_counts": {
+      "healthy": 11609,
+      "unhealthy": 5521,
+      "rubbish": 11987
+    },
+    "bothcells_in_test": 0,
+    "bothcells_in_eval": 0,
+    "testable": false,
+    "conclusion": "bothcells is ABSENT from both annotated label sets, so the hypothesis 'bothcells concentrate in the deferred region' is UNTESTABLE with this data. Reported as a limitation; no proxy constructed."
+  },
+  "discrepancy_check_vs_conformal_results_lac": {
+    "rank_average": {
+      "previous": {
+        "0.05": 0.9978,
+        "0.10": 0.9775,
+        "0.15": 0.9403,
+        "0.20": 0.892
+      },
+      "reproduced": {
+        "0.05": 0.9978,
+        "0.10": 0.9775,
+        "0.15": 0.9403,
+        "0.20": 0.892
+      },
+      "max_abs_diff": 0.0,
+      "match": true
+    },
+    "simple_average": {
+      "previous": {
+        "0.05": 0.9365,
+        "0.10": 0.8436,
+        "0.15": 0.7668,
+        "0.20": 0.6995
+      },
+      "reproduced": {
+        "0.05": 0.9365,
+        "0.10": 0.8436,
+        "0.15": 0.7668,
+        "0.20": 0.6995
+      },
+      "max_abs_diff": 0.0,
+      "match": true
+    }
+  }
+}

@@ -181,6 +181,7 @@ Sources: `bbse_results.json`, `dataset_audit.json`.
 | Baseline ensemble (published wF1) | `run_02_baselines.py` | `ensemble_baselines.json`, `baseline_table.csv` |
 | Weight Generator 0.8738 / 0.7039 / 0.0801 | `run_03_weight_generator.py` | `weight_generator_results.json`, `provenance/weight_generator_rerun.log` |
 | Conformal coverage | `run_04_conformal.py` | `conformal_results_lac.json`, `conformal_results_aps.json` |
+| Conformal Stage-3 analysis (Exp 1–3) | `run_07_conformal_analysis.py` | `conformal_stage3_analysis.json` |
 | BBSE priors/weights + raw-vs-corrected | `run_05_bbse.py` | `bbse_results.json` |
 | Matched-correction (a/b/c) | `run_06_bbse_matched.py` | `bbse_matched_results.json` |
 | Dataset audit (soft stats, class counts) | audit script | `dataset_audit.json` |
@@ -193,31 +194,96 @@ python scripts/run_03_weight_generator.py --data-dir <team-data> --labels-dir <l
 
 ---
 
-## Stage 3 — conformal selective prediction (kept for completeness)
+## Stage 3 — conformal selective prediction
 
-Driver `scripts/run_04_conformal.py`, using `ConformalPredictor`
-(`src/ps3c_robust/selective/conformal.py`) in 3-class mode. Method LAC (default);
-APS also valid after fixing a randomization asymmetry. Test split 50/50 →
-calibration/hold-out, seed 42. Within-test coverage holds (±0.006 of 1−α).
-Cross-split (calibrate test → predict eval), simple-average ensemble
-under-covers — the selective-prediction signature of the shift
-(`conformal_results_lac.json`):
+Predictor `src/ps3c_robust/selective/conformal.py`; coverage tables from
+`scripts/run_04_conformal.py`, the analysis below from
+`scripts/run_07_conformal_analysis.py`. **LAC** scoring, 3-class, canonical loader,
+seed 42. Analysed on two ensembles: **rank_average** (champion, eval point wF1
+0.8157) and **simple_average** (eval 0.7585). Sources: `conformal_results_lac.json`
+(coverage) and `conformal_stage3_analysis.json` (Experiments 1–3). Deferral is
+defined as **prediction-set size ≠ 1** (empty sets are deferred too).
 
-| α | target | rank_average cov | simple_average cov |
-|--:|--:|--:|--:|
-| 0.05 | 0.95 | 0.998 | 0.9365 |
-| 0.10 | 0.90 | 0.978 | 0.8436 |
-| 0.15 | 0.85 | 0.940 | 0.7668 |
-| 0.20 | 0.80 | 0.892 | 0.6995 |
+> The cross-split coverage numbers reproduce `conformal_results_lac.json` **exactly**
+> (discrepancy check `max |Δ| = 0.0` for both ensembles); the new file *adds*
+> analysis and does not overwrite the old one.
 
-rank_average over-covers (shift-invariant); simple_average under-covers at every α.
+### Experiment 1 — the coverage failure is shift, not a bug
+
+Coverage on the **same** eval hold-out (14,559 samples), calibrated two ways:
+cross-split (calibrate on full test) vs within-eval (calibrate on the other 14,558
+eval samples).
+
+| α (target) | rank_avg test-cal | rank_avg **eval-cal** | simple_avg test-cal | simple_avg **eval-cal** |
+|--:|--:|--:|--:|--:|
+| 0.05 (0.95) | 0.9980 | **0.9508** | 0.9389 | **0.9554** |
+| 0.10 (0.90) | 0.9771 | **0.9016** | 0.8436 | **0.9003** |
+| 0.15 (0.85) | 0.9412 | **0.8520** | 0.7656 | **0.8483** |
+| 0.20 (0.80) | 0.8928 | **0.7994** | 0.6972 | **0.7991** |
+
+**Recalibrating within eval restores nominal coverage for both ensembles at every
+α** → the cross-split behaviour is attributable to the test→eval shift breaking
+exchangeability, not to an implementation bug. Two distinct failure modes under the
+shift: the shift-invariant `rank_average` **over-covers** (conservative — clinically
+safe), while `simple_average` **under-covers** (unsafe — real coverage 0.70 at a 0.80
+target). Shift-invariant point predictions imply *conservative* coverage, not nominal.
+
+### Experiment 2 — what is deferred (test-calibrated on full eval = deployment)
+
+Selective risk (accepted = singletons; full = all 29,117):
+
+| ensemble | α | accept % | accepted wF1 | full wF1 |
+|---|--:|--:|--:|--:|
+| rank_average | 0.05 | 5.7 | 0.9976 | 0.8157 |
+| rank_average | 0.10 | 25.7 | 0.9787 | 0.8157 |
+| rank_average | 0.15 | 52.8 | 0.9320 | 0.8157 |
+| rank_average | 0.20 | 76.4 | 0.8764 | 0.8157 |
+| simple_average | 0.05 | 65.0 | 0.9076 | 0.7585 |
+| simple_average | 0.10 | 89.5 | 0.7953 | 0.7585 |
+| simple_average | 0.15 | 93.6 | 0.7829 | 0.7585 |
+| simple_average | 0.20 | 79.8 | 0.8461 | 0.7585 |
+
+Abstaining on non-singletons buys accuracy on the accepted set (the risk–coverage
+trade-off). Set-size distribution (N=29,117) shows where deferrals come from: at low
+α mostly multi-label sets, at high α **empty sets** appear as the LAC threshold 1−q̂
+rises — e.g. `simple_average` at α=0.20 has **5,880 empty / 23,237 singleton / 0
+larger**, which is why its accept rate is non-monotonic (93.6% at α=0.15 → 79.8% at
+α=0.20). `rank_average` at α=0.05 is the opposite extreme: 1,652 singleton / 17,504
+doubleton / 9,961 full, accept 5.7%.
+
+**Clinically relevant finding — unhealthy is over-deferred.** Unhealthy fraction
+(eval prior **0.190**) by partition:
+
+| ensemble | α | overall | deferred | accepted |
+|---|--:|--:|--:|--:|
+| rank_average | 0.05 | 0.190 | 0.199 | 0.037 |
+| rank_average | 0.20 | 0.190 | 0.368 | 0.135 |
+| simple_average | 0.05 | 0.190 | 0.418 | 0.066 |
+| simple_average | 0.15 | 0.190 | 0.566 | 0.164 |
+
+At every α and for both ensembles the deferred set is **enriched** in unhealthy and
+the accepted set is **depleted** of it (up to 56.6% unhealthy deferred vs 3.7–16%
+accepted). The system abstains disproportionately on the clinically most important
+class. This cuts both ways — deferring uncertain unhealthy cases to a cytologist is
+arguably the *safe* behaviour, but the automated accept set delivers least value
+exactly where it matters most, and this must be stated plainly rather than presented
+as unqualified selective-prediction success.
+
+### Experiment 3 — bothcells hypothesis is untestable
+
+The stated hypothesis was that bothcells samples concentrate in the deferred region.
+Confirmed directly from the label files (`experiment_3_bothcells`): **bothcells
+appears 0 times in both annotated label sets** (test: 5,826 healthy / 576 unhealthy /
+11,757 rubbish; eval: 11,609 / 5,521 / 11,987). All evaluation is 3-class, so the
+hypothesis is **untestable with this data** — reported as a limitation; no proxy was
+constructed.
 
 ## Files
 
 Tracked JSON/text: `ensemble_baselines.json`, `weight_generator_results.json`,
 `adaptive_ensemble_canonical.json`, `adaptive_ensemble_results.txt`,
 `bbse_results.json`, `bbse_matched_results.json`, `conformal_results_lac.json`,
-`conformal_results_aps.json`, `dataset_audit.json`, `baseline_table.csv`,
-`provenance/weight_generator_rerun.log`.
+`conformal_results_aps.json`, `conformal_stage3_analysis.json`, `dataset_audit.json`,
+`baseline_table.csv`, `provenance/weight_generator_rerun.log`.
 Ignored binaries (regenerate by re-running): `weight_generator_cluster.pt`,
 `cluster_routing_eval.npy`.
